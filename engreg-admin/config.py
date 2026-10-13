@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class Config:
-    SECRET_KEY = os.getenv("SECRET_KEY", "engreg-schools-super-secret-key-2026")
+    SECRET_KEY = os.getenv("SECRET_KEY", "change-me-nazareth-dev-only")
     DEBUG = os.getenv("DEBUG", "True").lower() == "true"
     PORT = int(os.getenv("PORT", 5000))
     

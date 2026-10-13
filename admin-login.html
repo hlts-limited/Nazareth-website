@@ -4,9 +4,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin Login | Engreg Schools</title>
+  <title>Admin Login | Nazareth Schools</title>
   <!-- Favicon -->
-  <link rel="icon" type="image/jpeg" href="https://placehold.co/32x32/0b2545/d4af37?text=ES">
+  <link rel="icon" type="image/png" href="img/favicon.png">
   
   <!-- Fonts & Icons -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -37,9 +37,9 @@
         
         <!-- Top row: logo -->
         <div class="d-flex align-items-center gap-3 z-index-2">
-          <img src="img/logo.jpeg" alt="School Logo" class="banner-logo rounded" style="width: 60px; height: 60px; object-fit: cover;">
+          <img src="img/logo.png" alt="School Logo" class="banner-logo rounded" style="width: 60px; height: 60px; object-fit: cover;">
           <div class="text-white leading-none">
-            <h4 class="fw-bold tracking-wide mb-0">ENGREG SCHOOLS</h4>
+            <h4 class="fw-bold tracking-wide mb-0">NAZARETH SCHOOLS</h4>
             <span class="small text-accent">Nurturing Future Leaders</span>
           </div>
         </div>
@@ -54,7 +54,7 @@
         
         <!-- Bottom row: copyright -->
         <div class="z-index-2">
-          <p class="text-white-50 small mb-0">&copy; 2026 Engreg Schools. All Rights Reserved.</p>
+          <p class="text-white-50 small mb-0">&copy; 2026 Nazareth School. All Rights Reserved.</p>
         </div>
       </div>
       
@@ -63,8 +63,8 @@
         <div class="card glass-login-card p-4 p-md-5 w-100 max-w-480 border-0 text-white scroll-reveal">
           
           <div class="text-center mb-4 d-lg-none">
-            <img src="img/logo.jpeg" alt="School Logo" class="mb-2 rounded" style="width: 50px; height: 50px; object-fit: cover;">
-            <h5 class="fw-bold mb-0">ENGREG SCHOOLS</h5>
+            <img src="img/logo.png" alt="School Logo" class="mb-2 rounded" style="width: 50px; height: 50px; object-fit: cover;">
+            <h5 class="fw-bold mb-0">NAZARETH SCHOOLS</h5>
           </div>
 
           <h2 class="fw-bold text-white mb-2">Administrator Login</h2>
@@ -136,17 +136,10 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
 
   <!-- Login Client Code -->
+  <script src="firebase-config.js"></script>
   <script>
     // Firebase Web Configurations (Empty for offline fallback)
-    const firebaseConfig = {
-      apiKey: "AIzaSyCZGyG1fZ9tVV5ga33vam5kWJqAd16VMaA",
-      authDomain: "engreg-school.firebaseapp.com",
-      projectId: "engreg-school",
-      storageBucket: "engreg-school.firebasestorage.app",
-      messagingSenderId: "641331000293",
-      appId: "1:641331000293:web:c5941f6e7af285d7cff50c",
-      measurementId: "G-LWCVS1413Z"
-    };
+    const firebaseConfig = window.FIREBASE_CONFIG || {};
 
     let firebaseAuthReady = false;
     try {

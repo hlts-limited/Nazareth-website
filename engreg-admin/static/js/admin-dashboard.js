@@ -108,7 +108,7 @@ document.addEventListener("DOMContentLoaded", () => {
     myChartInstance = new Chart(ctx, {
       type: 'bar',
       data: {
-        labels: ['Nursery & Primary', 'High School'],
+        labels: ['School A', 'School B'],
         datasets: [
           {
             label: 'Registered Candidates',
@@ -697,11 +697,11 @@ document.addEventListener("DOMContentLoaded", () => {
     classSelect.innerHTML = "";
 
     if (school === "nursery") {
-      label.textContent = "Register New Pupil (Nursery & Primary)";
+      label.textContent = "Register New Pupil (School A)";
       const classes = ["Foundation 1", "Foundation 2", "Nursery 1", "Nursery 2", "Primary 1", "Primary 2", "Primary 3", "Primary 4", "Primary 5", "Primary 6"];
       classes.forEach(c => classSelect.innerHTML += `<option value="${c}">${c}</option>`);
     } else {
-      label.textContent = "Register New Student (High School)";
+      label.textContent = "Register New Student (School B)";
       const classes = ["JSS 1", "JSS 2", "JSS 3", "SSS 1", "SSS 2", "SSS 3"];
       classes.forEach(c => classSelect.innerHTML += `<option value="${c}">${c}</option>`);
     }

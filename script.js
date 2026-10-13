@@ -1,5 +1,5 @@
 /**
- * Engreg Schools Landing Page Scripts
+ * Nazareth School Website Scripts
  * Includes: Sticky Nav, Mobile Menu Collapse, Anthem Video controls, Event countdowns, Form validations, Scroll Reveal, Back-to-Top
  */
 
@@ -898,7 +898,7 @@ document.addEventListener("DOMContentLoaded", () => {
         candidateName = formData["nurseryChildName"] || "Nursery Candidate";
         collectionName = "nursery_primary_registration";
       } else {
-        candidateName = formData["highSchoolName"] || formData["highSchoolDeclName"] || "High School Candidate";
+        candidateName = formData["highSchoolName"] || formData["highSchoolDeclName"] || "School B Candidate";
         collectionName = "high_school_registration";
       }
 
@@ -1012,7 +1012,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const startConfetti = () => {
     if (!confettiContainer) return;
     confettiContainer.innerHTML = "";
-    const colors = ["#D4AF37", "#0B2545", "#134074", "#FFFFFF", "#ffd700", "#c5a028"];
+    const colors = ["#E1A0A4", "#4A4163", "#695E89", "#FFFFFF", "#8577A6", "#D4868B"];
 
     for (let i = 0; i < 80; i++) {
       const piece = document.createElement("div");
@@ -1124,6 +1124,24 @@ document.addEventListener("DOMContentLoaded", () => {
   // ==========================================================================
   const GALLERY_IMAGES = [];
 
+  // Bundled photos shown when Firestore is unavailable or has no gallery images yet
+  const STARTER_GALLERY = [
+    { id: "starter-01", src: "img/nazareth/cultural-day-01.jpg", title: "Cultural Day", category: "cultural" },
+    { id: "starter-02", src: "img/nazareth/cultural-day-02.jpg", title: "Cultural Day", category: "cultural" },
+    { id: "starter-03", src: "img/nazareth/cultural-day-03.jpg", title: "Cultural Day", category: "cultural" },
+    { id: "starter-04", src: "img/nazareth/cultural-day-04.jpg", title: "Cultural Day", category: "cultural" },
+    { id: "starter-05", src: "img/nazareth/cultural-day-05.jpg", title: "Cultural Day", category: "cultural" },
+    { id: "starter-07", src: "img/nazareth/cultural-day-07.jpg", title: "Cultural Day", category: "cultural" },
+    { id: "starter-08", src: "img/nazareth/cultural-day-08.jpg", title: "Cultural Day", category: "cultural" },
+    { id: "starter-09", src: "img/nazareth/cultural-day-09.jpg", title: "Cultural Day", category: "cultural" },
+    { id: "starter-10", src: "img/nazareth/cultural-day-10.jpg", title: "Cultural Day", category: "cultural" },
+    { id: "starter-11", src: "img/nazareth/cultural-day-11.jpg", title: "Cultural Day", category: "cultural" },
+    { id: "starter-12", src: "img/nazareth/cultural-day-12.jpg", title: "Cultural Day", category: "cultural" },
+    { id: "starter-13", src: "img/nazareth/cultural-day-13.jpg", title: "Cultural Day", category: "cultural" },
+    { id: "starter-14", src: "img/nazareth/cultural-day-14.jpg", title: "Cultural Day", category: "cultural" },
+    { id: "starter-15", src: "img/nazareth/cultural-day-15.jpg", title: "Cultural Day", category: "cultural" }
+  ];
+
   // Live Gallery Loader
   const loadLiveGallery = async () => {
     if (!galleryGrid) return;
@@ -1156,8 +1174,12 @@ document.addEventListener("DOMContentLoaded", () => {
         console.error("Firestore gallery query failed:", err);
       }
     } else {
-      console.log("Firebase is offline or uninitialized. No images to display.");
+      console.log("Firebase is offline or uninitialized. Showing bundled gallery photos.");
       GALLERY_IMAGES.length = 0;
+    }
+
+    if (GALLERY_IMAGES.length === 0) {
+      GALLERY_IMAGES.push(...STARTER_GALLERY);
     }
 
     updateGalleryData();
@@ -1258,7 +1280,7 @@ document.addEventListener("DOMContentLoaded", () => {
       col.innerHTML = `
         <div class="gallery-item-card" data-index="${index}">
           <img src="${img.src}" alt="${img.title}" loading="lazy"
-            onerror="this.src='https://placehold.co/400x300/0b2545/d4af37?text=Engreg+Photo'">
+            onerror="this.src='https://placehold.co/400x300/4a4163/e1a0a4?text=Nazareth+Photo'">
           <div class="gallery-item-overlay">
             <div class="gallery-item-icon">
               <i class="fa-solid fa-magnifying-glass-plus"></i>

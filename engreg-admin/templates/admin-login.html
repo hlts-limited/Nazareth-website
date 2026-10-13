@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin Login | Engreg Schools</title>
   <!-- Favicon -->
-  <link rel="icon" type="image/jpeg" href="{{ url_for('static', filename='images/logo.jpeg') }}">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/favicon.png') }}">
   
   <!-- Fonts & Icons -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -37,7 +37,7 @@
         
         <!-- Top row: logo -->
         <div class="d-flex align-items-center gap-3 z-index-2">
-          <img src="{{ url_for('static', filename='images/logo.jpeg') }}" alt="School Logo" class="banner-logo rounded" style="width: 60px; height: 60px; object-fit: cover;">
+          <img src="{{ url_for('static', filename='images/logo.png') }}" alt="School Logo" class="banner-logo rounded" style="width: 60px; height: 60px; object-fit: cover;">
           <div class="text-white leading-none">
             <h4 class="fw-bold tracking-wide mb-0">ENGREG SCHOOLS</h4>
             <span class="small text-accent">Nurturing Future Leaders</span>
@@ -63,7 +63,7 @@
         <div class="card glass-login-card p-4 p-md-5 w-100 max-w-480 border-0 text-white scroll-reveal">
           
           <div class="text-center mb-4 d-lg-none">
-            <img src="{{ url_for('static', filename='images/logo.jpeg') }}" alt="School Logo" class="mb-2 rounded" style="width: 50px; height: 50px; object-fit: cover;">
+            <img src="{{ url_for('static', filename='images/logo.png') }}" alt="School Logo" class="mb-2 rounded" style="width: 50px; height: 50px; object-fit: cover;">
             <h5 class="fw-bold mb-0">ENGREG SCHOOLS</h5>
           </div>
 
@@ -142,14 +142,15 @@
   <!-- Login Client Code -->
   <script>
     // Firebase Web Configurations (Empty for offline fallback)
+    // TODO: fill in from the Nazareth Firebase project (same values as /firebase-config.js)
     const firebaseConfig = {
-      apiKey: "AIzaSyCZGyG1fZ9tVV5ga33vam5kWJqAd16VMaA",
-      authDomain: "engreg-school.firebaseapp.com",
-      projectId: "engreg-school",
-      storageBucket: "engreg-school.firebasestorage.app",
-      messagingSenderId: "641331000293",
-      appId: "1:641331000293:web:c5941f6e7af285d7cff50c",
-      measurementId: "G-LWCVS1413Z"
+      apiKey: "",
+      authDomain: "",
+      projectId: "",
+      storageBucket: "",
+      messagingSenderId: "",
+      appId: "",
+      measurementId: ""
     };
 
     let firebaseAuthReady = false;

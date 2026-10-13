@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin Dashboard | Engreg Schools</title>
   <!-- Favicon -->
-  <link rel="icon" type="image/jpeg" href="{{ url_for('static', filename='images/logo.jpeg') }}">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/favicon.png') }}">
   
   <!-- Fonts & Icons -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -30,7 +30,7 @@
     <!-- Collapsible Sidebar -->
     <nav id="sidebar" class="sidebar bg-primary-dark text-white p-3 transition-all">
       <div class="sidebar-header d-flex align-items-center gap-3 mb-4 pb-3 border-bottom border-secondary-light">
-        <img src="{{ url_for('static', filename='images/logo.jpeg') }}" alt="School Logo" class="sidebar-logo rounded">
+        <img src="{{ url_for('static', filename='images/logo.png') }}" alt="School Logo" class="sidebar-logo rounded">
         <div class="leading-none text-truncate">
           <h5 class="fw-bold tracking-wide mb-0 text-truncate">ENGREG ADMIN</h5>
           <span class="small text-accent text-truncate">Dashboard v1.0</span>
@@ -54,10 +54,10 @@
           </a>
           <ul class="collapse list-unstyled ps-4 mt-2 mb-2 gap-1 d-flex flex-column" id="admissionsSubmenu">
             <li>
-              <a href="#" class="sidebar-sublink" data-tab="nursery-tab">Nursery & Primary</a>
+              <a href="#" class="sidebar-sublink" data-tab="nursery-tab">School A</a>
             </li>
             <li>
-              <a href="#" class="sidebar-sublink" data-tab="high-tab">High School</a>
+              <a href="#" class="sidebar-sublink" data-tab="high-tab">School B</a>
             </li>
           </ul>
         </li>
@@ -80,7 +80,7 @@
           <button class="btn btn-apply-3d py-2 px-3 w-100 mb-2 small fw-bold" onclick="openAddCandidateModal('nursery')">Get Now (Nursery)</button>
         </li>
         <li class="px-2">
-          <button class="btn btn-apply-3d py-2 px-3 w-100 mb-2 small fw-bold" onclick="openAddCandidateModal('high')">Get Now (High School)</button>
+          <button class="btn btn-apply-3d py-2 px-3 w-100 mb-2 small fw-bold" onclick="openAddCandidateModal('high')">Get Now (School B)</button>
         </li>
       </ul>
 
@@ -132,21 +132,21 @@
                   <span class="badge bg-secondary-light text-muted">Nursery</span>
                 </div>
                 <h3 class="fw-bold text-primary-dark mb-1" id="statNurseryReg">0</h3>
-                <p class="text-muted small mb-0">Nursery & Primary Candidates</p>
+                <p class="text-muted small mb-0">School A Candidates</p>
               </div>
             </div>
             
-            <!-- High School Candidates -->
+            <!-- School B Candidates -->
             <div class="col-md-6 col-lg-3">
               <div class="card stat-card shadow-sm border-0 bg-white p-4 h-100">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                   <div class="icon-shape bg-light-blue text-primary rounded-circle shadow-sm">
                     <i class="fa-solid fa-graduation-cap fs-4"></i>
                   </div>
-                  <span class="badge bg-secondary-light text-muted">High School</span>
+                  <span class="badge bg-secondary-light text-muted">School B</span>
                 </div>
                 <h3 class="fw-bold text-primary-dark mb-1" id="statHighReg">0</h3>
-                <p class="text-muted small mb-0">High School Candidates</p>
+                <p class="text-muted small mb-0">School B Candidates</p>
               </div>
             </div>
 
@@ -283,7 +283,7 @@
         <!-- ==================== TAB 3: NURSERY ADMISSIONS ==================== -->
         <section id="nursery-tab" class="tab-panel">
           <div class="d-flex justify-content-between align-items-center mb-4">
-            <h2 class="fw-bold text-primary-dark mb-0">Nursery & Primary Registrations</h2>
+            <h2 class="fw-bold text-primary-dark mb-0">School A Registrations</h2>
             <button class="btn btn-accent text-primary-dark fw-bold btn-premium py-2 px-4 shadow-sm" onclick="openAddCandidateModal('nursery')">
               <i class="fa-solid fa-user-plus me-2"></i>Register New Pupil
             </button>
@@ -363,10 +363,10 @@
           </div>
         </section>
 
-        <!-- ==================== TAB 4: HIGH SCHOOL ADMISSIONS ==================== -->
+        <!-- ==================== TAB 4: SCHOOL B ADMISSIONS ==================== -->
         <section id="high-tab" class="tab-panel">
           <div class="d-flex justify-content-between align-items-center mb-4">
-            <h2 class="fw-bold text-primary-dark mb-0">High School Registrations</h2>
+            <h2 class="fw-bold text-primary-dark mb-0">School B Registrations</h2>
             <button class="btn btn-accent text-primary-dark fw-bold btn-premium py-2 px-4 shadow-sm" onclick="openAddCandidateModal('high')">
               <i class="fa-solid fa-user-plus me-2"></i>Register New Student
             </button>
@@ -447,11 +447,11 @@
           <h2 class="fw-bold text-primary-dark mb-4">Successful Candidates</h2>
           
           <div class="row g-4">
-            <!-- Nursery & Primary Successful Column -->
+            <!-- School A Successful Column -->
             <div class="col-lg-6">
               <div class="card shadow-sm border-0 p-4 bg-white h-100">
                 <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
-                  <h5 class="fw-bold text-primary-dark mb-0">Nursery & Primary Section</h5>
+                  <h5 class="fw-bold text-primary-dark mb-0">School A Section</h5>
                   <button id="nurseryBtnReturnReg" class="btn btn-outline-nav-sm py-1 px-3 small border" disabled>
                     <i class="fa-solid fa-arrow-rotate-left me-1"></i>Return Selected
                   </button>
@@ -477,11 +477,11 @@
               </div>
             </div>
 
-            <!-- High School Successful Column -->
+            <!-- School B Successful Column -->
             <div class="col-lg-6">
               <div class="card shadow-sm border-0 p-4 bg-white h-100">
                 <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
-                  <h5 class="fw-bold text-primary-dark mb-0">High School Section</h5>
+                  <h5 class="fw-bold text-primary-dark mb-0">School B Section</h5>
                   <button id="highBtnReturnReg" class="btn btn-outline-nav-sm py-1 px-3 small border" disabled>
                     <i class="fa-solid fa-arrow-rotate-left me-1"></i>Return Selected
                   </button>
@@ -522,7 +522,7 @@
                 <div class="card p-4 border bg-light h-100 hover-zoom-effect">
                   <i class="fa-solid fa-file-pdf fs-1 text-danger mb-3"></i>
                   <h6 class="fw-bold text-primary-dark">Nursery Registrations</h6>
-                  <p class="text-muted small">Export full directory of Nursery & Primary registrants including contacts.</p>
+                  <p class="text-muted small">Export full directory of School A registrants including contacts.</p>
                   <button onclick="exportTable('nursery_registration', 'pdf')" class="btn btn-danger w-100 py-2 mt-2">Export PDF</button>
                   <button onclick="exportTable('nursery_registration', 'excel')" class="btn btn-outline-success w-100 py-2 mt-2 small">Export Excel</button>
                 </div>
@@ -532,8 +532,8 @@
               <div class="col-md-4">
                 <div class="card p-4 border bg-light h-100 hover-zoom-effect">
                   <i class="fa-solid fa-file-excel fs-1 text-success mb-3"></i>
-                  <h6 class="fw-bold text-primary-dark">High School Registrations</h6>
-                  <p class="text-muted small">Export high school applicants sheet. Suitable for examination sorting.</p>
+                  <h6 class="fw-bold text-primary-dark">School B Registrations</h6>
+                  <p class="text-muted small">Export School B applicants sheet. Suitable for examination sorting.</p>
                   <button onclick="exportTable('high_registration', 'pdf')" class="btn btn-danger w-100 py-2 mt-2">Export PDF</button>
                   <button onclick="exportTable('high_registration', 'excel')" class="btn btn-success w-100 py-2 mt-2">Export Excel</button>
                 </div>

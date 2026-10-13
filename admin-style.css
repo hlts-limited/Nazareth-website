@@ -3,11 +3,11 @@
    ========================================================================== */
 
 :root {
-  --primary-dark: #0b2545;
-  --primary-darkest: #040f1e;
-  --accent: #d4af37;
-  --accent-hover: #b89222;
-  --light-blue: rgba(11, 37, 69, 0.05);
+  --primary-dark: #4A4163;
+  --primary-darkest: #1A1424;
+  --accent: #E1A0A4;
+  --accent-hover: #D4868B;
+  --light-blue: rgba(74, 65, 99, 0.05);
   --white-80: rgba(255, 255, 255, 0.8);
   --white-70: rgba(255, 255, 255, 0.7);
   --transition-smooth: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
@@ -34,7 +34,7 @@ body {
 .banner-particles span {
   position: absolute;
   border-radius: 50%;
-  background: rgba(212, 175, 55, 0.04);
+  background: rgba(225, 160, 164, 0.04);
   animation: floatBlobs 12s infinite ease-in-out;
 }
 
@@ -89,7 +89,7 @@ body {
 
 .login-input-group:focus-within {
   border-color: var(--accent) !important;
-  box-shadow: 0 0 0 0.25rem rgba(212, 175, 55, 0.15);
+  box-shadow: 0 0 0 0.25rem rgba(225, 160, 164, 0.15);
 }
 
 .btn-login-outline {
@@ -119,7 +119,7 @@ body {
   position: sticky;
   top: 0;
   z-index: 100;
-  box-shadow: 4px 0 15px rgba(11, 37, 69, 0.15);
+  box-shadow: 4px 0 15px rgba(74, 65, 99, 0.15);
 }
 
 .sidebar.collapsed {
@@ -188,12 +188,12 @@ body {
 .stat-card {
   border-radius: 16px !important;
   transition: var(--transition-smooth);
-  border: 1px solid rgba(11, 37, 69, 0.05) !important;
+  border: 1px solid rgba(74, 65, 99, 0.05) !important;
 }
 
 .stat-card:hover {
   transform: translateY(-5px);
-  box-shadow: 0 10px 25px rgba(11, 37, 69, 0.1) !important;
+  box-shadow: 0 10px 25px rgba(74, 65, 99, 0.1) !important;
 }
 
 .icon-shape {
@@ -205,7 +205,7 @@ body {
 }
 
 .bg-light-blue {
-  background: rgba(11, 37, 69, 0.05) !important;
+  background: rgba(74, 65, 99, 0.05) !important;
   color: var(--primary-dark) !important;
 }
 
@@ -237,7 +237,7 @@ body {
 
 .dropzone:hover, .dropzone.dragover {
   border-color: var(--accent) !important;
-  background: rgba(212, 175, 55, 0.05) !important;
+  background: rgba(225, 160, 164, 0.05) !important;
 }
 
 .dropzone i {
@@ -283,7 +283,7 @@ body {
   position: absolute;
   bottom: 10px;
   left: 10px;
-  background: rgba(11, 37, 69, 0.85);
+  background: rgba(74, 65, 99, 0.85);
   color: var(--accent);
   padding: 0.25rem 0.6rem;
   border-radius: 4px;
@@ -333,7 +333,7 @@ body {
     left: 0;
     width: 100vw;
     height: 100vh;
-    background: rgba(4, 15, 30, 0.6);
+    background: rgba(26, 20, 36, 0.6);
     backdrop-filter: blur(3px);
     -webkit-backdrop-filter: blur(3px);
     z-index: 1040;
@@ -403,7 +403,7 @@ body {
 .dashboard-body .form-control:focus,
 .dashboard-body .form-select:focus {
   border-color: var(--accent) !important;
-  box-shadow: 0 0 0 0.2rem rgba(212, 175, 55, 0.15) !important;
+  box-shadow: 0 0 0 0.2rem rgba(225, 160, 164, 0.15) !important;
 }
 
 /* Action button controls text overrides */

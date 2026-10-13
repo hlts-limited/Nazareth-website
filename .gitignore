@@ -1,2 +1,8 @@
 engreg-admin/firebase-credentials.json
 .env
+
+# Generated files
+.firebase/
+__pycache__/
+*.pyc
+firebase-debug.log

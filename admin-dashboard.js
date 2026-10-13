@@ -247,21 +247,21 @@ document.addEventListener("DOMContentLoaded", () => {
     myChartInstance = new Chart(ctx, {
       type: 'bar',
       data: {
-        labels: ['Nursery & Primary', 'High School'],
+        labels: ['School A', 'School B'],
         datasets: [
           {
             label: 'Registered Candidates',
             data: [nursReg, highReg],
-            backgroundColor: 'rgba(11, 37, 69, 0.85)',
-            borderColor: 'rgba(11, 37, 69, 1)',
+            backgroundColor: 'rgba(74, 65, 99, 0.85)',
+            borderColor: 'rgba(74, 65, 99, 1)',
             borderWidth: 1,
             borderRadius: 6
           },
           {
             label: 'Successful Candidates',
             data: [nursSucc, highSucc],
-            backgroundColor: 'rgba(212, 175, 55, 0.95)',
-            borderColor: 'rgba(212, 175, 55, 1)',
+            backgroundColor: 'rgba(225, 160, 164, 0.95)',
+            borderColor: 'rgba(225, 160, 164, 1)',
             borderWidth: 1,
             borderRadius: 6
           }
@@ -443,7 +443,7 @@ document.addEventListener("DOMContentLoaded", () => {
         card.className = "col";
         card.innerHTML = `
           <div class="admin-gallery-card">
-            <img src="${img.imageUrl}" alt="${img.caption}" onerror="this.src='https://placehold.co/400x300/0b2545/d4af37?text=Image'">
+            <img src="${img.imageUrl}" alt="${img.caption}" onerror="this.src='https://placehold.co/400x300/4a4163/e1a0a4?text=Image'">
             <span class="gallery-card-badge">${img.category}</span>
             <div class="gallery-card-actions">
               <button class="btn btn-danger btn-sm rounded-circle shadow-sm" onclick="deleteGalleryImage('${doc.id}', '${img.caption}')" title="Delete">
@@ -603,7 +603,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const isChecked = selectedCandidateIds[school].includes(cand.id) ? "checked" : "";
       const isPassed = cand.passed ? "checked" : "";
       
-      const passportSrc = cand.passportUrl && cand.passportUrl !== '#' ? cand.passportUrl : 'https://placehold.co/40x40/0b2545/d4af37?text=Avatar';
+      const passportSrc = cand.passportUrl && cand.passportUrl !== '#' ? cand.passportUrl : 'https://placehold.co/40x40/4a4163/e1a0a4?text=Avatar';
       const hasBirth = cand.birthCertUrl && cand.birthCertUrl !== '#' && cand.birthCertUrl.length > 20;
       const hasResult = (cand.resultUrl || cand.resultFileUrl) && (cand.resultUrl || cand.resultFileUrl) !== '#' && (cand.resultUrl || cand.resultFileUrl).length > 20;
       const hasTestimonial = cand.testimonialUrl && cand.testimonialUrl !== '#' && cand.testimonialUrl.length > 20;
@@ -616,7 +616,7 @@ document.addEventListener("DOMContentLoaded", () => {
         <td>
           <img src="${passportSrc}" 
                alt="Passport" class="rounded shadow-sm" style="width: 40px; height: 40px; object-fit: cover;"
-               onerror="this.src='https://placehold.co/40x40/0b2545/d4af37?text=ES'">
+               onerror="this.src='https://placehold.co/40x40/4a4163/e1a0a4?text=NS'">
         </td>
         <td>
           <strong class="text-primary-dark d-block">${cand.name}</strong>
@@ -962,11 +962,11 @@ document.addEventListener("DOMContentLoaded", () => {
     classSelect.innerHTML = "";
 
     if (school === "nursery") {
-      label.textContent = "Register New Pupil (Nursery & Primary)";
+      label.textContent = "Register New Pupil (School A)";
       const classes = ["Foundation 1", "Foundation 2", "Nursery 1", "Nursery 2", "Primary 1", "Primary 2", "Primary 3", "Primary 4", "Primary 5", "Primary 6"];
       classes.forEach(c => classSelect.innerHTML += `<option value="${c}">${c}</option>`);
     } else {
-      label.textContent = "Register New Student (High School)";
+      label.textContent = "Register New Student (School B)";
       const classes = ["JSS 1", "JSS 2", "JSS 3", "SSS 1", "SSS 2", "SSS 3"];
       classes.forEach(c => classSelect.innerHTML += `<option value="${c}">${c}</option>`);
     }
@@ -1107,7 +1107,7 @@ document.addEventListener("DOMContentLoaded", () => {
           id: doc.id,
           ...d,
           name: candName,
-          class: d.class || d.highSchoolClass || "High School",
+          class: d.class || d.highSchoolClass || "School B",
           gender: d.gender || d.highSchoolGender || "",
           parentName: d.highSchoolParentName || d.parentName || "",
           parentPhone: d.highSchoolPhone || d.highSchoolParentHomeTel || d.parentPhone || "",
@@ -1140,7 +1140,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     list.forEach(succ => {
-      const passportSrc = succ.passportUrl && succ.passportUrl !== '#' ? succ.passportUrl : 'https://placehold.co/40x40/0b2545/d4af37?text=Avatar';
+      const passportSrc = succ.passportUrl && succ.passportUrl !== '#' ? succ.passportUrl : 'https://placehold.co/40x40/4a4163/e1a0a4?text=Avatar';
       const hasBirth = succ.birthCertUrl && succ.birthCertUrl !== '#' && succ.birthCertUrl.length > 20;
       const hasResult = (succ.resultUrl || succ.resultFileUrl) && (succ.resultUrl || succ.resultFileUrl) !== '#' && (succ.resultUrl || succ.resultFileUrl).length > 20;
       const hasTestimonial = succ.testimonialUrl && succ.testimonialUrl !== '#' && succ.testimonialUrl.length > 20;
@@ -1153,7 +1153,7 @@ document.addEventListener("DOMContentLoaded", () => {
         <td>
           <img src="${passportSrc}" 
                alt="Passport" class="rounded shadow-sm" style="width: 36px; height: 36px; object-fit: cover;"
-               onerror="this.src='https://placehold.co/40x40/0b2545/d4af37?text=ES'">
+               onerror="this.src='https://placehold.co/40x40/4a4163/e1a0a4?text=NS'">
         </td>
         <td>
           <strong class="text-primary-dark d-block">${succ.name}</strong>
@@ -1366,25 +1366,25 @@ document.addEventListener("DOMContentLoaded", () => {
     const hasResult = resultUrl && resultUrl !== '#' && resultUrl.length > 20;
     const hasTestimonial = testimonialUrl && testimonialUrl !== '#' && testimonialUrl.length > 20;
 
-    const passportImg = hasPassport ? passportUrl : 'https://placehold.co/120x140/0b2545/d4af37?text=No+Photo';
+    const passportImg = hasPassport ? passportUrl : 'https://placehold.co/120x140/4a4163/e1a0a4?text=No+Photo';
     const subDate = cand.createdAt ? new Date(cand.createdAt).toLocaleDateString("en-GB", { day: 'numeric', month: 'short', year: 'numeric' }) : new Date().toLocaleDateString();
 
     printArea.innerHTML = `
       <div class="printable-form-header d-flex justify-content-between align-items-center">
         <div class="d-flex align-items-center gap-3">
-          <img src="img/logo.jpeg" alt="School Logo" style="width: 75px; height: 75px; object-fit: cover;" class="rounded border">
+          <img src="img/logo.png" alt="School Logo" style="width: 75px; height: 75px; object-fit: cover;" class="rounded border">
           <div>
             <h3 class="fw-bold mb-0 text-primary-dark" style="font-family: 'Playfair Display', serif; letter-spacing: 0.5px;">ENGREG SCHOOLS</h3>
-            <p class="mb-0 text-muted small"><strong>Nursery, Primary & High School</strong></p>
+            <p class="mb-0 text-muted small"><strong>School A & School B</strong></p>
             <p class="mb-0 text-muted small">24 Bankole St, Somolu, Lagos, Nigeria | Tel: +2347061359270 | Email: info@engregschool.com</p>
             <p class="mb-0 text-accent small fw-bold">MOTTO: Nurturing Future Leaders</p>
           </div>
         </div>
         <div class="text-end">
           <div class="print-passport-box shadow-sm ms-auto">
-            <img src="${passportImg}" alt="Passport Photograph" onerror="this.src='https://placehold.co/120x140/0b2545/d4af37?text=No+Photo'">
+            <img src="${passportImg}" alt="Passport Photograph" onerror="this.src='https://placehold.co/120x140/4a4163/e1a0a4?text=No+Photo'">
           </div>
-          <span class="badge bg-primary-dark text-accent mt-2 py-1 px-2 d-block small">${school === 'nursery' ? 'NURSERY & PRIMARY' : 'HIGH SCHOOL'}</span>
+          <span class="badge bg-primary-dark text-accent mt-2 py-1 px-2 d-block small">${school === 'nursery' ? 'SCHOOL A' : 'SCHOOL B'}</span>
         </div>
       </div>
 
@@ -1617,7 +1617,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const isNursery = tableType.includes("nursery");
     const colName = isNursery ? "nursery_primary_registration" : "high_school_registration";
     const schoolKey = isNursery ? "nursery" : "high";
-    const schoolTitle = isNursery ? "Nursery & Primary School" : "High School";
+    const schoolTitle = isNursery ? "School A" : "School B";
 
     showToast(`Preparing ${schoolTitle} registry ${format.toUpperCase()}...`);
 
@@ -1728,7 +1728,7 @@ document.addEventListener("DOMContentLoaded", () => {
       printableArea.innerHTML = `
         <div class="printable-form-header d-flex align-items-center justify-content-between pb-3 border-bottom border-dark mb-4">
           <div class="d-flex align-items-center gap-3">
-            <img src="img/logo.jpeg" alt="Logo" style="width: 65px; height: 65px; object-fit: cover; border-radius: 8px;">
+            <img src="img/logo.png" alt="Logo" style="width: 65px; height: 65px; object-fit: cover; border-radius: 8px;">
             <div>
               <h3 class="fw-bold text-primary-dark mb-0 tracking-wide">ENGREG SCHOOLS</h3>
               <p class="mb-0 small text-muted">24 Bankole St, Somolu, Lagos 102216, Lagos, Nigeria | Tel: +234 706 135 9270</p>
@@ -1816,7 +1816,7 @@ document.addEventListener("DOMContentLoaded", () => {
           highList.push({
             id: doc.id,
             name: candName,
-            class: d.class || d.highSchoolClass || "High School",
+            class: d.class || d.highSchoolClass || "School B",
             gender: d.gender || d.highSchoolGender || "N/A"
           });
         });
@@ -1875,7 +1875,7 @@ document.addEventListener("DOMContentLoaded", () => {
     printableArea.innerHTML = `
       <div class="printable-form-header text-center pb-3 border-bottom border-dark mb-4">
         <div class="d-flex align-items-center justify-content-center gap-3 mb-2">
-          <img src="img/logo.jpeg" alt="Logo" style="width: 70px; height: 70px; object-fit: cover; border-radius: 8px;">
+          <img src="img/logo.png" alt="Logo" style="width: 70px; height: 70px; object-fit: cover; border-radius: 8px;">
           <div class="text-start">
             <h2 class="fw-bold text-primary-dark mb-0 tracking-wide">ENGREG SCHOOLS</h2>
             <p class="mb-0 text-muted small">24 Bankole St, Somolu, Lagos 102216, Lagos, Nigeria | Tel: +234 706 135 9270</p>
@@ -1896,10 +1896,10 @@ document.addEventListener("DOMContentLoaded", () => {
         </span>
       </div>
 
-      <!-- SECTION 1: NURSERY & PRIMARY SCHOOL -->
+      <!-- SECTION 1: SCHOOL A -->
       <div class="mb-5">
         <div class="d-flex align-items-center justify-content-between bg-light border-start border-4 border-primary p-2 mb-2">
-          <h6 class="fw-bold text-primary-dark mb-0 text-uppercase">1. Nursery & Primary School Admitted Candidates</h6>
+          <h6 class="fw-bold text-primary-dark mb-0 text-uppercase">1. School A Admitted Candidates</h6>
           <span class="badge bg-primary text-white">${nurseryList.length} Admitted</span>
         </div>
         <table class="table table-bordered align-middle print-data-table mb-0" style="font-size: 13px;">
@@ -1917,10 +1917,10 @@ document.addEventListener("DOMContentLoaded", () => {
         </table>
       </div>
 
-      <!-- SECTION 2: HIGH SCHOOL -->
+      <!-- SECTION 2: SCHOOL B -->
       <div class="mb-4">
         <div class="d-flex align-items-center justify-content-between bg-light border-start border-4 border-primary p-2 mb-2">
-          <h6 class="fw-bold text-primary-dark mb-0 text-uppercase">2. High School Admitted Candidates</h6>
+          <h6 class="fw-bold text-primary-dark mb-0 text-uppercase">2. School B Admitted Candidates</h6>
           <span class="badge bg-primary text-white">${highList.length} Admitted</span>
         </div>
         <table class="table table-bordered align-middle print-data-table mb-0" style="font-size: 13px;">
