@@ -34,7 +34,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
   <!-- Custom Stylesheet -->
-  <link rel="stylesheet" href="style.css?v=5">
+  <link rel="stylesheet" href="style.css?v=8">
   <link rel="stylesheet" href="modern-layer.css">
 </head>
 
@@ -318,7 +318,7 @@
     </div>
   </section>
 
-  <!-- 6. Welcome Message & School Anthem Section -->
+  <!-- 6. Welcome Message & Featured Video Section -->
   <section id="about" class="welcome-anthem-section py-5 bg-light scroll-reveal">
     <div class="container">
       <div class="row g-5">
@@ -348,55 +348,24 @@
           </div>
         </div>
 
-        <!-- Right Column: School Anthem Video -->
+        <!-- Right Column: Featured YouTube Video -->
         <div class="col-lg-6">
           <div
             class="anthem-card bg-primary-dark text-white rounded-4 shadow-lg overflow-hidden h-100 d-flex flex-column justify-content-between position-relative">
             <div class="p-4 border-bottom border-secondary-dark d-flex justify-content-between align-items-center">
               <div class="d-flex align-items-center gap-3">
-                <i class="fa-solid fa-music text-accent fs-4"></i>
-                <h4 class="mb-0 fw-bold">School Anthem</h4>
+                <i class="fa-brands fa-youtube text-accent fs-4"></i>
+                <h4 class="mb-0 fw-bold">Watch Nazareth School</h4>
               </div>
-              <span class="badge bg-secondary-dark text-accent">NAZARETH ANTHEM</span>
+              <span class="badge bg-secondary-dark text-accent">NAZARETH TV</span>
             </div>
 
-            <!-- Custom Styled Video Container -->
-            <div
-              class="video-container position-relative bg-black flex-grow-1 d-flex align-items-center justify-content-center">
-              <video id="anthemVideo" class="w-100 h-100" style="object-fit: cover;" preload="metadata" playsinline>
-                <source
-                  src="https://assets.mixkit.co/videos/preview/mixkit-children-in-school-uniform-playing-together-in-the-schoolyard-41584-large.mp4"
-                  type="video/mp4">
-                Your browser does not support the video tag.
-              </video>
-              <!-- Video Overlay with Play Button -->
-              <div
-                class="video-overlay position-absolute w-100 h-100 d-flex flex-column align-items-center justify-content-center text-center p-3"
-                id="videoOverlay">
-                <div class="play-btn-wrapper mb-3" id="playBtn">
-                  <i class="fa-solid fa-play"></i>
-                </div>
-                <h5 class="fw-bold mb-1">Listen to the Voices of Excellence</h5>
-                <p class="small text-white-50">Click to play school anthem video</p>
-              </div>
-
-              <!-- Video Custom Controls (appears on hover when playing) -->
-              <div
-                class="video-custom-controls position-absolute bottom-0 start-0 w-100 p-3 d-flex align-items-center justify-content-between bg-gradient-top d-none"
-                id="videoControls">
-                <button class="btn btn-link text-white p-0" id="videoPlayPause">
-                  <i class="fa-solid fa-pause"></i>
-                </button>
-                <div class="progress mx-3 flex-grow-1" id="videoProgressBar"
-                  style="height: 6px; cursor: pointer; background: rgba(255,255,255,0.2);">
-                  <div class="progress-bar bg-accent" role="progressbar" style="width: 0%" id="videoProgress"></div>
-                </div>
-                <button class="btn btn-link text-white p-0" id="videoFullscreen">
-                  <i class="fa-solid fa-expand"></i>
-                </button>
-              </div>
+            <!-- Featured YouTube video -->
+            <div class="video-container video-embed flex-grow-1 bg-black">
+              <iframe src="https://www.youtube-nocookie.com/embed/Bp_U9RsWjkk?rel=0"
+                title="Nazareth School – Growing in Wisdom, Age and Grace" allow="accelerometer; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowfullscreen
+                loading="lazy" referrerpolicy="strict-origin-when-cross-origin"></iframe>
             </div>
-
             <!-- Anthem Text Footer -->
             <div class="p-4 bg-primary-darkest text-center text-white-50 small">
               "Growing in Wisdom, Age and Grace"
@@ -492,6 +461,31 @@
                 <span class="countdown-text">Calculating...</span>
               </div>
             </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Latest Videos (YouTube uploads playlist: updates automatically) -->
+  <section class="latest-videos-section py-5 bg-white scroll-reveal">
+    <div class="container">
+      <div class="text-center mb-5 max-w-700 mx-auto">
+        <span class="text-accent fw-bold text-uppercase tracking-wide small d-block mb-2">Nazareth School Festac TV</span>
+        <h2 class="display-6 fw-bold text-primary-dark mb-3">Latest Videos</h2>
+        <p class="text-muted">Watch our latest highlights on YouTube.</p>
+      </div>
+      <div class="row justify-content-center">
+        <div class="col-lg-9">
+          <div class="video-embed rounded-4 overflow-hidden shadow-lg">
+            <iframe src="https://www.youtube-nocookie.com/embed/videoseries?list=UUtaIN1rhzuUJ-rQLaxNCdaQ&rel=0"
+              title="Nazareth School Festac TV – latest videos" allow="accelerometer; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowfullscreen
+              loading="lazy" referrerpolicy="strict-origin-when-cross-origin"></iframe>
+          </div>
+          <div class="text-center mt-4">
+            <a href="https://www.youtube.com/@nsfestactv" target="_blank" rel="noopener" class="btn btn-outline-primary px-4 py-2">
+              <i class="fa-brands fa-youtube me-2"></i>Visit our YouTube channel
+            </a>
           </div>
         </div>
       </div>
@@ -728,7 +722,7 @@
   <!-- Bootstrap 5 Bundle JS (Contains Popper) -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
   <!-- Custom Javascript -->
-  <script src="script.js?v=5"></script>
+  <script src="script.js?v=8"></script>
   <script src="modern-layer.js"></script>
 </body>
 
