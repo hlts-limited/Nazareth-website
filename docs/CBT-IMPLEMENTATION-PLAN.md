@@ -1,274 +1,263 @@
-# HLTS Limited: CBT System
-## Implementation Plan (online and offline), CBT first
+# HLTS Limited: Offline CBT Software
+## Implementation Plan for a desktop (executable) CBT system
 
 | | |
 |---|---|
-| **Status** | Draft v0.2 for review (narrowed to CBT only) |
+| **Status** | Draft v0.3 for review (offline desktop software, CBT only) |
 | **Date** | 31 October 2026 |
-| **Scope** | Computer-Based Testing (CBT) for schools served by HLTS Limited, starting with Engreg Schools (this repository) |
-| **Runs** | Online (cloud) and offline (on a school LAN or a single device), with reliable sync between them |
-| **Later** | Result management (report cards, broadsheets, publishing) is a separate follow-on project. See §13 |
+| **Product** | **HLTS CBT**: installable Windows software (`.exe` installers) that runs exams on a school's own computers with **no internet required** |
+| **First customer** | Engreg Schools |
+| **Later** | Optional online features (licence portal, cloud backup, result management) are separate follow-on work. See §13 |
 
 ---
 
 ## 1. Goals
 
-1. **Run CBT exams with or without internet.** Typical cases are a computer lab with an unreliable connection, power cuts in the middle of an exam, and day schools with no connection at all.
-2. **Never lose an answer.** Every response is saved on the device first and synced later, and every change is logged.
-3. **Mark objective questions automatically** and give teachers a queue for theory answers.
-4. **Hand scores to the school's current results process** as Excel/CSV and printable score sheets, so CBT is useful before any results module exists.
-5. **Reuse what already exists.** That means Firebase project `engreg-school` (Auth, Firestore, Storage, Hosting), the admin dashboard, and the audit log.
-6. **Be ready for more schools and for a results module later.** Every record carries a `schoolId`, and CBT scores are stored in a shape a results module can read directly.
+1. **Fully offline.** Install from a USB stick and run every feature (question bank, exams, marking, reports) with no internet, ever.
+2. **Simple to install and run.** One installer for the exam server, one for the exam client. A non-technical exam officer can set up a lab in under an hour.
+3. **Never lose an answer.** Every response is saved on the student's PC and on the server at once. A power cut or crashed PC doesn't lose work.
+4. **Secure exams.** Questions are encrypted on disk, the student screen is locked down, and every action is logged.
+5. **Usable scores straight away.** Automatic marking, Excel/PDF exports in the school's broadsheet layout, and printable answer scripts.
+6. **A sellable HLTS product.** Offline licence activation, versioned installers, and the ability to serve many schools without any cloud dependency.
 
-### Out of scope for this project
-- Result management: CA entry, grade computation, positions, approval, report cards, parent portal, result-checker PINs.
-- Remote proctoring through webcam or AI.
-- Native mobile apps. The installable PWA covers tablets.
+### Out of scope for v1
+- Result management (CA entry, report cards, positions). CBT scores are exported for now.
+- Internet features of any kind. Every design choice still allows them to be added later (§13).
+- macOS. Linux support for the server only if a school needs it.
 
 ---
 
-## 2. Current state (what this builds on)
+## 2. Product overview
 
-| Area | Today | Gap for CBT |
+HLTS CBT is made of two desktop applications on one local network (LAN). It can also run on a single PC.
+
+| Application | Installed on | What it does |
 |---|---|---|
-| Hosting | Static HTML/JS site on Firebase Hosting | Needs app-style screens for students, teachers and exam officers |
-| Admin | `admin-dashboard.html/js` (Firebase compat SDK v10.8) plus a Flask portal in `engreg-admin/` | Two admin stacks. Pick one and extend it (see §4.3) |
-| Auth | Email and password admin login | `firestore.rules` `isAdmin()` lets **any** signed-in user in. Roles must come from custom claims before students get accounts |
-| Data | Registrations, successful-candidate lists, gallery, settings, audit logs | No students, classes, subjects, questions or exams |
-| Storage | `registrations/**` accepts public writes with no size or type limit | Must be tightened before more upload surfaces are added |
+| **HLTS CBT Server** (`HLTS-CBT-Server-Setup.exe`) | One machine per exam centre: exam officer's laptop or a dedicated mini PC | Holds the database, the admin screens (setup, question bank, exams, marking, reports) and the proctor console. Serves exams to clients over the LAN |
+| **HLTS CBT Client** (`HLTS-CBT-Client-Setup.exe`) | Every student PC in the lab | Finds the server automatically, locks the PC into a fullscreen exam screen, saves answers locally and on the server |
+| **Browser fallback** | Any PC or tablet without the client installed | Opens `http://<server-ip>:8080` in Chrome or Edge to sit the exam with reduced lockdown. Turned off by default, and the exam officer can allow it per exam |
 
-> **Must happen first:** once students and teachers can sign in, the current rule (`request.auth != null`) would give them admin access. Phase 0 replaces it with role checks.
+```
+        ┌─────────────────────────────────────────────┐
+        │  HLTS CBT Server (.exe)                     │
+        │  admin UI · proctor console · exam service  │
+        │  SQLite (encrypted) · backups to USB        │
+        └───────────▲───────────▲───────────▲─────────┘
+                    │  LAN (Ethernet / Wi-Fi), no internet
+          ┌─────────┴──┐ ┌──────┴─────┐ ┌───┴─────────┐
+          │ CBT Client │ │ CBT Client │ │ Browser     │
+          │ (kiosk)    │ │ (kiosk)    │ │ fallback    │
+          │ local save │ │ local save │ │ (optional)  │
+          └────────────┘ └────────────┘ └─────────────┘
+
+   Single-PC mode: server and client run on the same computer (makeup exams, small groups).
+```
 
 ---
 
-## 3. Users and roles
+## 3. Users and roles (all local accounts on the server)
 
 | Role | Main tasks |
 |---|---|
-| **HLTS super admin** | Onboard schools, register exam hubs, view platform health |
-| **School admin** | Set up classes, subjects, staff and students; approve exams for release |
-| **Exam officer** | Build exams from the question bank, schedule them, run the exam hub, monitor live sessions, export scores |
-| **Teacher** | Write and review questions, mark theory answers, view their class's scores |
-| **Proctor / invigilator** | Start sessions, handle incidents, grant extra time, force-submit |
-| **Student** | Sit exams, and see their score if the exam allows it |
+| **Administrator** | Install, activate the licence, manage users, backups and settings |
+| **Exam officer** | Set up classes and students, build and schedule exams, run the proctor console, export scores |
+| **Teacher** | Write and review questions for their subjects, mark theory answers |
+| **Proctor / invigilator** | Start sessions, move students to spare PCs, give extra time, force-submit |
+| **Student** | Log in on a client with admission number and exam PIN, then sit the exam |
 
-Roles live in **Firebase Auth custom claims** (`{ role, schoolId }`), set only by a Cloud Function that admins call. Security rules read the claims. Nothing in the client is trusted. On the hub, staff accounts are synced from the cloud and students log in with their ID and an exam PIN.
+Staff accounts use passwords hashed with Argon2, with lockout after failed attempts. Students don't have passwords. Instead they get a PIN for each exam, printed on PIN slips.
 
 ---
 
-## 4. Architecture
-
-### 4.1 Overview
-
-```
-                        ┌───────────────────────── CLOUD (online) ─────────────────────────┐
-                        │  Firebase Auth · Firestore · Storage · Hosting · Cloud Functions │
-                        │  (package builder, marking, sync endpoint, score export)         │
-                        └──────────────▲───────────────────────────▲───────────────────────┘
-                                       │ HTTPS (when available)    │ HTTPS
-              ┌────────────────────────┴───────┐          ┌────────┴──────────────────┐
-              │  EXAM HUB (offline LAN server) │          │  Online clients           │
-              │  mini PC / laptop on UPS       │          │  (school with internet)   │
-              │  Node.js + SQLite, serves PWA  │          │  PWA in browser           │
-              └──────▲─────────▲─────────▲─────┘          └───────────────────────────┘
-                     │ Wi-Fi / Ethernet LAN (no internet needed)
-               ┌─────┴──┐ ┌────┴───┐ ┌───┴────┐
-               │ Lab PC │ │ Lab PC │ │ Tablet │   Exam client PWA (IndexedDB autosave)
-               └────────┘ └────────┘ └────────┘
-
-      USB "sync bundle" export/import ─── fallback when the hub never gets internet
-```
-
-### 4.2 Three ways to run
-
-| Mode | When | How it works |
-|---|---|---|
-| **A. Online** | School has a dependable connection | PWA talks straight to Firestore and Cloud Functions. Responses autosave to IndexedDB and then to Firestore |
-| **B. LAN hub (main offline mode)** | Computer lab without dependable internet | Exam officer downloads encrypted exam packages to the hub before exam day. Lab PCs open `http://cbt.local` (or the hub's IP). The hub marks objective questions locally and pushes results to the cloud whenever it can |
-| **C. Standalone device** | One laptop, small groups, makeup exams | PWA installed in advance with the exam package cached. The key is released at start time by a proctor PIN. Results upload later or go out by USB bundle |
-
-### 4.3 Technology choices (recommended)
+## 4. Technology choices (recommended)
 
 | Layer | Choice | Why |
 |---|---|---|
-| Shared domain logic | **TypeScript package `@hlts/core`** for item scoring, shuffling seeds, attempt state and sync event types | One implementation runs in the browser, Cloud Functions and the hub, so offline and online marking always match |
-| Front end | **PWA in TypeScript with Vite**; Preact or React; Workbox service worker; Dexie for IndexedDB; KaTeX for maths | Installable, works offline, small bundle for low-end lab PCs |
-| Cloud | Firebase Auth, Firestore, Storage, **Cloud Functions (Node 20, TS)**, Hosting, App Check | Already in use |
-| Hub server | **Node.js (Fastify) + SQLite (better-sqlite3)**, packaged as one Windows/Linux installer (pkg or Electron tray app) | Runs on cheap hardware. SQLite is one file and easy to back up. Same TS core as the cloud |
-| Admin | New CBT screens in the PWA (staff area). Link to them from the existing `admin-dashboard.html` | Avoids growing the 90 KB dashboard script and keeps one codebase for hub and cloud screens |
+| Desktop shell | **Electron** for both server and client | Mature, good kiosk and fullscreen controls, one JavaScript/TypeScript codebase, easy Windows installers. Alternative: **Tauri** gives much smaller installers and lower memory use, but needs Rust skills |
+| Language | **TypeScript** throughout | One language for UI, server logic and marking |
+| Shared logic | `@hlts/core` package for item scoring, shuffling seeds, attempt state, scaling, and save-event types | Client and server mark identically |
+| UI | React (or Preact) + Vite, KaTeX for maths | Fast on low-end PCs, works the same in the browser fallback |
+| Server engine | **Fastify** HTTP/WebSocket server running inside the server app | Real-time proctor updates, many concurrent clients |
+| Database | **SQLite** (better-sqlite3) with **SQLCipher** encryption, WAL mode, `synchronous=FULL` | Single encrypted file, no database server to install, survives power cuts, easy to back up |
+| Client local store | SQLite file per client (or IndexedDB in the browser fallback) | Answers survive a crash or power cut on the student PC |
+| Discovery | UDP broadcast + mDNS (`hlts-cbt.local`), with manual IP entry and a QR code on the server screen as fallback | Clients find the server with no configuration |
+| Reports | PDF with pdf-lib, Excel with ExcelJS | No Office installation needed |
+| Packaging | **electron-builder** → NSIS `.exe` installers (and portable `.zip`), **code-signed** with an HLTS certificate | Windows SmartScreen trusts signed installers. Schools can install from USB |
 
-> **Repository decision:** keep the public website in this repo and put the CBT product in a **new monorepo** (`hlts-limited/hlts-cbt`) with `packages/core`, `apps/web` (PWA), `apps/hub` and `functions/`. Engreg's site then links to it. A results module can be added to the same monorepo later.
+**Minimum hardware**
+- **Server:** Windows 10/11 64-bit, i5 or Ryzen 5, 8 GB RAM, SSD, wired network. Handles 300 candidates.
+- **Client:** Windows 10/11 (64-bit; 32-bit build if needed), 4 GB RAM, 1366×768 screen.
+- **Network:** gigabit switch (preferred) or Wi-Fi 6 router. UPS for the server and network gear.
+
+**Repository:** create a new monorepo `hlts-limited/hlts-cbt` with `packages/core`, `apps/server`, `apps/client` and `apps/web-ui` (the screens shared by both apps and the browser fallback). The Engreg website repo stays as it is.
 
 ---
 
 ## 5. Functional modules
 
-### 5.1 Minimal school setup
-Only what CBT needs:
-- Sessions and terms, used to tag exams.
-- Classes and arms (e.g. JSS1A, SS2B), subjects, and teacher-to-subject assignments.
-- Students: admission number, name, class, photo (optional), and exam PIN. Import from CSV and from the existing `*_successful` admission lists.
+### 5.1 Installation and first run
+- Install wizard: choose Server or Client, install location, and Windows Firewall rule (added automatically, with consent).
+- Server first run: create the administrator, enter school name and logo, and **activate the licence offline** (§7).
+- Client first run: finds servers on the LAN, the proctor approves the PC once (it then gets a device ID), and the PC is assigned a seat number.
 
-### 5.2 Question bank
+### 5.2 School setup
+- Sessions and terms, classes and arms, subjects, and teacher-to-subject assignments.
+- Students: admission number, name, class, photo (optional). **Import from Excel/CSV.**
+- PIN slip generator: prints exam PINs per class (with QR codes) on A4.
+
+### 5.3 Question bank
 - Item types: single-choice MCQ, multi-select, true/false, fill-in-the-blank (with accepted variants), numeric (with tolerance), and essay/theory (marked by hand). Images, audio for languages, LaTeX maths, and shared comprehension passages are supported.
 - Metadata: subject, class level, topic, difficulty, tags, author, and status (`draft → reviewed → approved`).
-- Import from **Excel/CSV templates** and **Aiken/GIFT** text. Word (.docx) import comes later.
-- Version history. An exam keeps the item versions it was published with.
-- Item analysis after each exam: difficulty index, discrimination, and distractor counts.
+- **Import from Excel/CSV templates, Aiken text, and Word (.docx) using a simple numbered format.**
+- Version history. An exam keeps the question versions it was built with.
+- **Question bank transfer:** export and import as an encrypted `.hltsbank` file, to move questions between schools, campuses or a teacher's laptop.
+- Item analysis after each exam: difficulty, discrimination, and distractor counts.
 
-### 5.3 Exam setup and scheduling
+### 5.4 Exam setup and scheduling
 - Fixed questions or **blueprint** selection (e.g. 10 easy, 20 medium and 10 hard from topics X and Y).
-- Question and option order shuffled with a per-attempt seed, so neighbouring screens differ.
-- Duration, start and end window, late-entry cutoff, attempts allowed, pass mark, section timing, calculator on or off, review allowed or not, and show score immediately or after release.
-- **Score scaling** (e.g. 40 marks scaled to 60) and a label for the result component it counts towards, such as "First Term Exam". This is the hook a results module will use later.
-- Candidate lists come from the class arm, with per-student extra time for accessibility needs.
-- Exam types: class test, mid-term, terminal exam, entrance exam (for admissions candidates without student accounts), and practice mode with instant feedback.
+- Question and option order shuffled per student, so neighbouring screens differ.
+- Duration, start time, late-entry cutoff, attempts, pass mark, sections with their own timers, calculator on or off, review allowed or not, show score at the end or not.
+- Score scaling (e.g. 40 marks scaled to 60).
+- Candidate lists from classes, with extra time for individual students.
+- Exam types: class test, mid-term, terminal exam, **entrance exam** (walk-in candidates without student records), and **practice mode** with instant feedback.
+- Exams stay **locked (encrypted) until the scheduled start**, and a proctor releases them on the day.
 
-### 5.4 Exam delivery client
-- Login: student ID and exam PIN, or a QR card. Device check and instructions screen.
-- Question navigator grid (answered, flagged, unanswered), next and previous, flag for review, font size control, and light and dark themes.
-- **Autosave on every change** to IndexedDB at once, then to the hub or cloud within about 2 seconds, retrying with backoff.
-- **Timer from the server's clock** (hub or cloud). The local clock is only a display fallback, and drift is corrected on each sync.
-- **Crash and power-loss recovery:** on reload or on another PC, the attempt resumes with answers and remaining time intact.
-- Integrity measures (deterrents, not guarantees): fullscreen request, logging of tab and blur events, copy and paste blocked, right-click disabled, one active session per candidate, and IP/LAN restriction on the hub.
-- Auto-submit when time runs out. Submission receipt showing a code built from a hash of the answers.
+### 5.5 Exam client (student screen)
+- **Kiosk mode:** fullscreen, always on top, no window frame. Blocks Alt+F4, Ctrl+W and the Windows key combinations Electron can catch. Logs and warns on focus loss. Can't be closed without a proctor password.
+- For stricter lockdown, the installer can optionally set up a **Windows kiosk account** (Assigned Access or Shell Launcher) so the PC boots straight into the exam client. This is documented for school IT.
+- Login with admission number and PIN, or by scanning the QR on the PIN slip. Candidate photo shown for the invigilator to check.
+- Question navigator (answered, flagged, unanswered), next and previous, flag for review, font size control, calculator.
+- **Every answer saved twice at once:** in the client's local database and on the server (acknowledged within 500 ms). If the server can't be reached, answers queue locally and send when it comes back.
+- **Server-controlled timer.** The client only shows the countdown. Extra time and pauses come from the proctor.
+- **Resume anywhere:** if a PC fails, the student logs in on a spare PC and carries on with answers and time intact.
+- Auto-submit at time-up. Submission receipt code shown on screen.
 
-### 5.5 Proctor console
-- Live grid of candidates: not started, in progress (questions answered), idle, submitted, disconnected.
-- Actions: unlock a candidate onto another PC, grant extra time with a reason, pause or resume a candidate, force-submit, and post an announcement to all screens.
-- Incident log, which is included in the exam report.
+### 5.6 Proctor console (on the server)
+- Live seat map: not started, in progress (questions answered), idle, warning (focus lost), submitted, disconnected.
+- Actions: release the exam, move a student to another PC, give extra time with a reason, pause or resume, force-submit, unlock a client, and broadcast a message to all screens.
+- Incident log, printed in the exam report.
 
-### 5.6 Marking
-- Objective items are marked automatically by `@hlts/core`, on the hub when offline and in Functions when online.
-- Theory items go into a **marking queue** per teacher, with optional rubric, second marking, and moderation by the head of department.
-- Re-scoring: if an answer key is corrected, all affected attempts are re-marked, with an audit entry.
+### 5.7 Marking
+- Objective questions marked automatically on submission.
+- Theory answers go into a **marking queue** per teacher (marked on the server or a staff PC on the LAN), with optional rubric, second marking and moderation.
+- Answer key correction re-marks all affected attempts, logged in the audit trail.
 
-### 5.7 Scores output (instead of a results module for now)
-- Per exam and class arm: **Excel/CSV export** (admission number, name, raw score, scaled score, per-section scores) in a layout that pastes into the school's current broadsheet.
-- Printable score sheet (PDF) for the class teacher to sign.
-- Per-student answer script (PDF) for disputes and moderation.
-- Exam analysis: score distribution, item analysis, and time spent per question.
-- Entrance exams: ranked candidate list that can be pushed into the existing `*_successful` admission lists.
+### 5.8 Reports and exports
+- **Excel/CSV score export** per exam and class in the school's broadsheet layout. A template editor lets the exam officer map the columns.
+- Printable score sheet (PDF) for signature, and **per-student answer scripts** (PDF).
+- Exam analysis: score distribution, item analysis, and time per question.
+- Entrance exams: ranked candidate list (Excel/PDF), which the school can upload to its website's admission lists by hand.
+
+### 5.9 Backup, restore and maintenance
+- **Automatic backup** after every exam and daily, to a second disk or USB. Backups are encrypted.
+- One-click restore, plus a "move to new server PC" wizard.
+- Archive old sessions to keep the database small.
+- Diagnostics: network test, client list with software versions, and a log bundle for HLTS support (exported to USB, with no student data unless chosen).
 
 ---
 
-## 6. Data model (Firestore, cloud)
+## 6. Data model (SQLite on the server)
 
-Every document carries `schoolId`. Paths below sit under `schools/{schoolId}/`.
-
-| Collection | Key fields |
+| Table | Key fields |
 |---|---|
-| `sessions/{sessionId}/terms/{termId}` | name, start, end |
-| `classes/{classId}` | level, arm |
-| `subjects/{subjectId}` | name, code, levels[] |
-| `students/{studentId}` | admissionNo, names, classId, photoPath, examPinHash |
-| `staff/{uid}` | role, subjectIds[], classIds[] |
-| `questions/{qid}` (+ `versions/{v}`) | type, stem, options[], marks, topic, difficulty, status |
-| `questions/{qid}/keys/current` | answer key. Readable only by Functions and the hub |
-| `exams/{examId}` | title, subjectId, termId, classIds[], config{duration, window, shuffle, scaling…}, itemRefs[{qid, v}], resultComponent, status |
-| `exams/{examId}/attempts/{attemptId}` | studentId, seed, startedAt, deadline, status, rawScore, scaledScore, deviceId, source(`online|hub:<id>|device:<id>`) |
-| `exams/{examId}/attempts/{attemptId}/events/{eventId}` | type(answer/flag/blur/submit), qid, value, clientTs, seq, hmac |
-| `hubs/{hubId}` | name, publicKey, lastSyncAt, softwareVersion |
-| `audit_logs/{id}` | actor, action, target, before, after, ts (existing collection, extended) |
+| `users` | id, name, role, passwordHash, active |
+| `sessions`, `terms` | name, start, end |
+| `classes`, `subjects`, `teacher_subjects` | level, arm, subject codes |
+| `students` | id, admissionNo, names, classId, photo |
+| `questions`, `question_versions` | type, stem, options, marks, topic, difficulty, status |
+| `answer_keys` | questionVersionId, key (stored encrypted separately from questions) |
+| `exams`, `exam_items`, `exam_candidates` | config (JSON), item refs, candidate list, extra time, PIN hash |
+| `attempts` | id, examId, studentId, seed, startedAt, deadline, status, rawScore, scaledScore, deviceId |
+| `answer_events` | eventId (UUIDv7), attemptId, deviceId, seq, questionId, value, clientTs, serverTs |
+| `devices` | deviceId, name, seat, approved, lastSeen, clientVersion |
+| `incidents` | attemptId, type, note, by, ts |
+| `audit_log` | actor, action, target, before, after, ts |
+| `license` | licence file contents, activation info |
 
-The hub's SQLite schema mirrors the subset it needs (exams, items, keys, candidates, attempts, events, sync_outbox, sync_inbox).
+On each client, a small local SQLite holds unsent `answer_events` and the current attempt state only. It holds no answer keys.
 
-**Results-ready:** `attempts` store `termId`, `subjectId`, `resultComponent` and `scaledScore`, so a later results module can read CBT scores without migrating data.
-
----
-
-## 7. Offline sync design
-
-### 7.1 Exam packages (cloud → hub/device)
-1. The exam officer publishes an exam, and a Function builds a **package**: exam config, item versions, media, candidate list, and answer keys (for hub marking).
-2. The package is encrypted with **AES-256-GCM** using a per-exam content key, and the manifest is **signed** with the platform key so the hub can check it is genuine.
-3. The content key is wrapped with the hub's public key (registered when the hub is set up). For standalone devices it is released by proctor PIN at start time.
-4. Delivery is a download from the cloud, or a **USB `.hltspkg` file** when the hub has no connection at all.
-5. The hub refuses to decrypt or show questions before the exam's start window, which limits leaks.
-
-### 7.2 Responses (device → hub → cloud)
-- Each answer change is an **append-only event**: `{eventId: UUIDv7, attemptId, deviceId, seq, qid, value, clientTs}`.
-- The device writes it to IndexedDB, then posts it to the hub or cloud. The server **upserts by `eventId`**, so retries are safe and duplicates do no harm.
-- The hub writes events into SQLite (WAL mode, `synchronous=FULL`) before acknowledging, so a power cut doesn't lose them.
-- The hub's **outbox** pushes batches to a Cloud Function `syncHubBatch` whenever internet is available. Each batch is HMAC-signed with the hub's key and checked against the hub's registered identity.
-- No internet for days: the exam officer **exports a sync bundle** (signed and encrypted) to USB and uploads it from any connected computer.
-
-### 7.3 Conflict rules
-| Data | Rule |
-|---|---|
-| Answer events | Combine all events and order them by `(attemptId, seq)`. The latest event per question before the submit event wins |
-| Attempt status | Moves one way only: `not_started → in_progress → submitted → marked`. Never goes back |
-| Same student active on two devices | Hub enforces one active session. If both appear after sync, flag for exam officer review instead of merging silently |
-| Answer key corrections | Cloud is the source of truth. Hubs pull new key versions and re-mark |
-| Hub score vs cloud re-mark | Cloud re-marks every synced attempt with the same core. Any mismatch is flagged, never silently overwritten |
-
-### 7.4 Time integrity offline
-- The hub is the time authority on the LAN. It records any clock jump and is set from NTP whenever online.
-- The deadline is stored as `startedAt + duration + extraTime` in **hub time**. Clients only display a countdown.
+**How saving works:** each answer change is an append-only event with a unique ID. The server stores events by ID, so a resend never duplicates anything. The latest event per question before submission wins. Attempt status only moves forward (`not_started → in_progress → submitted → marked`).
 
 ---
 
-## 8. Security and privacy
+## 7. Licensing and distribution (offline)
 
-- **Role-based Firestore and Storage rules** using custom claims and `schoolId` matching, with unit tests in the Firebase emulator. This replaces today's `request.auth != null`.
-- **App Check** on web clients, and rate limits on login and sync Functions.
-- Answer keys are **never** readable by student clients. Marking runs in Functions or on the hub.
-- Exam packages are encrypted at rest and keys are released only at start time. Hub admin access is protected by password and device binding. Package downloads are logged.
-- Every privileged action (extra time, force-submit, re-mark, key change, score export) is written to `audit_logs`.
-- **Nigeria Data Protection Act 2023:** minimal student data, a retention policy for answer scripts, and a privacy notice.
-- Backups: Firestore scheduled exports (daily), and SQLite snapshots on the hub after every exam plus copy to USB.
-- Secrets: service account JSON stays out of git (already in `.gitignore`). Use Functions secrets, and rotate any key that has ever been shared.
+- **Licence file** signed by HLTS (Ed25519). It contains school name, edition, maximum concurrent candidates, number of server installs, and expiry date.
+- **Offline activation:** the server shows a machine code (hardware fingerprint). HLTS returns a signed activation code by phone, WhatsApp or email, and the admin types or pastes it in. No internet is needed on the school's PC.
+- Clients need no licence. The server enforces the candidate limit.
+- After expiry, past data stays readable and exportable, but new exams can't be started.
+- **Updates:** signed installers delivered on USB or by download. Database migrations run on start, after an automatic backup. Clients warn when their version doesn't match the server's.
+- **Code signing:** buy an OV or EV code-signing certificate for HLTS Limited so Windows doesn't block the installers.
 
 ---
 
-## 9. Non-functional targets
+## 8. Security
+
+- Database encrypted with SQLCipher. The key is protected with Windows DPAPI on the server machine, and the admin can export a recovery key.
+- Answer keys are never sent to clients. Marking runs on the server.
+- Exams stay encrypted until release. Each exam's content key is unlocked only at the scheduled start by proctor action.
+- Server-to-client traffic: TLS with a self-signed server certificate that clients pin when the PC is first approved, so a rogue machine on the LAN can't pretend to be the server.
+- Only approved devices can join an exam (device ID and seat). Browser fallback is off by default.
+- Kiosk lockdown on clients (§5.5), with focus loss logged.
+- Full audit log of staff actions. Export and backup are restricted to admin and exam officer.
+- **Nigeria Data Protection Act 2023:** data stays on the school's own machines, backups are encrypted, and there's a retention setting for answer scripts.
+
+---
+
+## 9. Performance and reliability targets
 
 | Metric | Target |
 |---|---|
-| Concurrent candidates per hub | 300 on a mid-range mini PC (i5, 8 GB RAM, SSD) on gigabit LAN |
-| Concurrent online candidates | 2,000 per school without degradation |
-| Answer saved locally | under 50 ms. Acknowledged by hub under 500 ms (p95) |
-| Data loss on power cut | 0 acknowledged events. Client keeps unacknowledged events and resends |
-| Client hardware | Works on Chrome or Edge from the last 2 years, 4 GB RAM PCs, and 1366×768 screens |
-| Objective marking | Scores ready within 1 min of the last submission |
-| Availability | Hub needs no internet during an exam. Cloud uses Firebase's SLA |
+| Concurrent candidates per server | 300 (mid-range PC, gigabit LAN) |
+| Answer saved locally | under 50 ms |
+| Answer acknowledged by server | under 500 ms (p95) |
+| Data loss on power cut (server on UPS or not) | 0 acknowledged answers. Unacknowledged answers are kept on the client and resent |
+| Client resume after PC failure | under 1 minute on a spare PC |
+| Objective scores ready | within 1 minute of the last submission |
+| Installer size | under 150 MB each (Electron). Under 20 MB if Tauri is chosen |
+| Setup time for a 50-PC lab | under 1 hour, including client approval |
 
 ---
 
-## 10. Delivery phases (CBT only)
+## 10. Delivery phases
 
-Assumes a team of 2–3 developers, 1 QA/support person, and a named school contact (exam officer). Durations are estimates.
+Assumes 2–3 developers, 1 QA/support person, and a named school contact (exam officer). Durations are estimates.
 
 ### Phase 0: Foundations (weeks 1–2)
-- Create the monorepo, CI (lint, test, emulator rule tests), and staging and production Firebase projects.
-- Custom claims and role management Function. Rewrite Firestore and Storage rules.
-- `@hlts/core` skeleton: item scoring for every type and seeded shuffling, with full unit tests.
-- Minimal school setup screens: classes, subjects, staff, and student CSV import.
-- **Exit:** roles enforced (proven by rule tests), and Engreg's classes and students imported in staging.
+- Create the monorepo and CI (lint, unit tests, Windows build on every commit).
+- Electron server and client shells, encrypted SQLite schema with migrations.
+- `@hlts/core` item scoring for every type and seeded shuffling, with full unit tests.
+- Installer pipeline (electron-builder, NSIS) and code signing set up.
+- **Exit:** signed server and client installers that install, start, and find each other on a LAN.
 
-### Phase 1: Online CBT (weeks 3–7)
-- Question bank (all objective types, plus theory with manual marking), Excel and Aiken import, and review workflow.
-- Exam builder, scheduling, shuffling, scaling, and candidate lists.
-- Exam client PWA with autosave, resume, server timer, and integrity events.
-- Proctor console.
-- Auto-marking, theory marking queue, score export (Excel/CSV/PDF), and answer scripts.
-- **Exit:** a real class test for one class arm runs online end to end, and the exported scores go into the school's existing broadsheet.
+### Phase 1: Server app (weeks 3–6)
+- User accounts and roles, school setup, and student Excel import.
+- Question bank with all question types, Excel/Aiken/Word import, review workflow, and `.hltsbank` transfer.
+- Exam builder, scheduling, shuffling, scaling, candidate lists, and PIN slips.
+- **Exit:** Engreg teachers enter one subject's questions and build a real test.
 
-### Phase 2: Offline hub and sync (weeks 8–13)
-- Hub server (Fastify + SQLite), installer, first-run pairing with the cloud (key exchange), and LAN discovery (`cbt.local` through mDNS, plus a fallback of IP on the screen and a QR code).
-- Encrypted exam packages, outbox and inbox sync, USB bundle import and export.
-- Proctor console and marking running on the hub.
-- Standalone device mode (Mode C).
-- Failure testing: pull network cables, cut power to hub and clients during an exam, run clocks fast or slow, sync the same bundle twice.
-- **Exit:** a 100-candidate lab exam with no internet, results synced and matching a re-mark in the cloud.
+### Phase 2: Exam delivery (weeks 7–10)
+- Client kiosk app, device approval, login, exam screen, and double saving (local + server).
+- Server timer, resume on another PC, auto-submit.
+- Proctor console with live seat map and all actions.
+- Automatic marking, theory marking queue, and score export (Excel/PDF) with answer scripts.
+- **Exit:** a 30-candidate test in a real lab, with scores exported into the school's broadsheet.
 
-### Phase 3: Pilot and rollout (weeks 14–16)
-- Pilot: one real mid-term test or mock exam at Engreg with the full process (package to hub, exam, sync, marking, export).
-- Load test (300 simulated candidates on the hub, 2,000 online), security review, and accessibility pass.
-- Training materials: exam officer runbook, proctor card, teacher quick-start for question entry. Support rota during exam weeks.
-- **Exit:** sign-off from the school, and a go or no-go for CBT in the next terminal exams.
+### Phase 3: Hardening and product features (weeks 11–13)
+- Offline licensing and activation, backup and restore, server migration wizard, diagnostics bundle.
+- TLS pinning, exam content encryption and release, audit log screens.
+- Browser fallback mode, single-PC mode, optional Windows kiosk-account setup guide.
+- Failure drills: pull network cables, cut power to server and clients mid-exam, fill the disk, kill the client process, change PC clocks.
+- Load test with 300 simulated clients.
+- **Exit:** every failure drill passes with zero lost acknowledged answers.
 
-**Total: about 16 weeks** (down from 22 for the combined plan).
+### Phase 4: Pilot and release (weeks 14–16)
+- Pilot: a real mid-term test or mock exam at Engreg, run by school staff with HLTS on standby.
+- Fix pilot issues, then release v1.0 installers.
+- Training: exam officer manual, proctor quick card, teacher question-entry guide, and short videos.
+- **Exit:** school sign-off and go or no-go for the next terminal exams.
+
+**Total: about 16 weeks.**
 
 ---
 
@@ -276,37 +265,35 @@ Assumes a team of 2–3 developers, 1 QA/support person, and a named school cont
 
 | Level | What |
 |---|---|
-| Unit | `@hlts/core`: scoring per item type, partial credit, scaling, and shuffling seeds. Property-based tests for sync merge (any event order gives the same final answers) |
-| Rules | Firestore and Storage rules tested in the emulator for every role (allowed and denied cases) |
-| Integration | Functions with emulators. Hub with an in-memory SQLite and a fake cloud |
-| End to end | Playwright: student sits exam, network drops, reload, resume on another PC, submit, score appears in export |
-| Load | k6 or Artillery against the hub and a staging Functions endpoint |
-| Failure drills | Scripted power-cut and network-loss scenarios, run before every pilot |
-| Acceptance | Pilot exam marked by CBT and spot-checked by hand for a sample of scripts |
+| Unit | `@hlts/core`: scoring per question type, partial credit, scaling, shuffling. Property-based tests that any order of resent answers gives the same final answers |
+| Integration | Server API with a temporary database. Client save queue against a server that goes offline and comes back |
+| End to end | Playwright driving Electron: install, approve PC, log in, answer, kill client, resume on another PC, submit, export |
+| Installer | Clean Windows 10 and 11 virtual machines (including 4 GB RAM clients): install, upgrade from the previous version, uninstall |
+| Load | 300 simulated clients against the server on lab-grade hardware |
+| Failure drills | Scripted power-cut, network-loss and disk-full scenarios before every release |
+| Acceptance | Pilot exam with a sample of scripts marked by hand to compare |
 
 ---
 
-## 12. Exam-day operations (offline runbook outline)
+## 12. Exam-day operations (runbook outline)
 
-1. **T−3 days:** exam officer downloads packages to the hub. The hub checks signatures and shows "Ready: N exams, M candidates".
-2. **T−1 day:** lab check. All PCs open the hub URL and run the device check. UPS charged. Spare PCs set aside. PIN slips printed.
-3. **Exam start:** the hub releases keys at the start time. Students log in with ID and PIN. The proctor console shows who is live.
-4. **Incident:** if a PC fails, the student moves to a spare PC and the attempt resumes. If power fails, the hub (on UPS) keeps state, and clients resume when power returns. Extra time can be granted with a logged reason.
-5. **End:** auto-submit, and the hub shows "All submitted". Sync now if online. Otherwise export a USB bundle.
-6. **After:** the cloud confirms receipt (counts match), and the hub archives the package. The exam officer exports scores.
-
-**Recommended hardware per exam centre:** 1 hub (mini PC or laptop, i5, 8 GB RAM, 256 GB SSD), 1 gigabit switch or a decent Wi-Fi 6 router for tablets, a UPS for the hub and network gear (at least 1 hr), and 10% spare client PCs.
+1. **Install day (once):** install the server, activate the licence, install clients from USB, approve each PC and assign seats.
+2. **T−3 days:** exam officer builds the exam and prints PIN slips. Automatic backup.
+3. **T−1 day:** lab check. All clients connect, and the network test passes. UPS charged. Spare PCs ready.
+4. **Exam start:** proctor releases the exam. Students log in with PINs. The seat map shows everyone live.
+5. **Incident:** if a PC fails, move the student to a spare PC and they resume. If power fails, clients resume when power returns, and give extra time with a logged reason.
+6. **End:** auto-submit, then "All submitted" on the console. Scores are marked, the exam officer exports Excel/PDF, and a backup runs automatically.
 
 ---
 
-## 13. Later: result management (separate project)
+## 13. Later: optional online features
 
-Not part of this plan. The CBT is built so it can plug in later without rework:
-- `attempts` already carry `termId`, `subjectId`, `resultComponent` and `scaledScore`.
-- `@hlts/core` is where grading scales and positions will be added.
-- The results module would cover: CA score entry (offline through Firestore persistence), grade and position computation, approval and locking, report cards, broadsheets, and parent access by login or result-checker PIN.
-
-Rough estimate for that project when it's time: 5–6 weeks on top of the CBT.
+Not in v1. The design leaves room for them:
+- **HLTS licence portal:** online activation and renewal (offline activation stays available).
+- **Cloud backup:** encrypted backups uploaded when the server has internet.
+- **Central question banks:** HLTS distributes question packs (e.g. WAEC/NECO practice) as `.hltsbank` files.
+- **Result management module:** CA entry, report cards and positions, built into the server app and reading CBT scores directly from `attempts`.
+- **Online results for parents:** a sync of published results to a website, such as the Engreg site's existing Firebase project.
 
 ---
 
@@ -314,31 +301,33 @@ Rough estimate for that project when it's time: 5–6 weeks on top of the CBT.
 
 | Risk | Mitigation |
 |---|---|
-| Power outages during exams | UPS on hub and network, durable local writes, resume on any PC |
-| Questions leak before the exam | Encrypted packages, time-locked key release, audit of package downloads |
-| Cheating in the lab | Shuffling, proctor console, LAN-only access, logged blur events, seating plan |
-| Offline and online scores differ | One shared `@hlts/core`, plus a re-mark in the cloud on sync with mismatches flagged |
-| Teachers slow to enter questions | Excel/Aiken import, a question-entry template, and a data-entry sprint before the pilot |
-| Low staff and student digital skills | Practice mode for students before real exams, short training videos, exam-week support |
-| Firebase costs grow with autosave writes | Debounce and batch events (e.g. every 2 s or 5 events). Hub batches before upload. Budget alerts |
+| Power outages during exams | UPS on server and network, every answer saved on client and server, resume on any PC |
+| Students escaping the exam screen | Electron kiosk mode, focus-loss logging, optional Windows kiosk account, invigilator seat map |
+| Antivirus or SmartScreen blocking installers | Code-signed installers, documented firewall and antivirus exceptions |
+| Old or mixed lab PCs | Test on 4 GB Windows 10 machines, 32-bit client build if needed, browser fallback |
+| Software piracy | Signed, machine-bound licence files with candidate limits |
+| Server PC failure | Automatic encrypted backups to USB, restore and migrate wizard |
+| Teachers slow to enter questions | Excel and Word import, templates, a data-entry sprint before the pilot |
+| Electron memory use on old PCs | Measure in Phase 0. Move the client to Tauri if 4 GB PCs struggle |
 
 ---
 
 ## 15. Open questions for HLTS / Engreg
 
-1. Is this for **Engreg only** at first, or should multi-school onboarding be in this first release?
-2. Which exams go on CBT first: class tests, mid-terms, terminal exams, or **entrance exams** for admissions?
-3. Should theory/essay questions be answered on screen, or stay on paper with CBT covering only objective sections?
-4. How many lab PCs, which OS, and is there Wi-Fi or wired LAN? Is a dedicated hub machine available?
-5. What layout does the school's current broadsheet use, so the score export matches it?
-6. Where are the questions now (Word files, past papers, nowhere yet)?
-7. Who owns support on exam days (HLTS staff on site, or school ICT staff)?
+1. **Windows only**, or are any lab PCs on Linux or older systems (e.g. Windows 7, 32-bit)?
+2. How many PCs are in the lab, and is the network wired or Wi-Fi? Which machine would be the server?
+3. **Electron or Tauri?** Electron is faster to build; Tauri is lighter on old PCs but needs Rust skills. Who will maintain the code?
+4. Which exams go on CBT first: class tests, mid-terms, terminal exams or entrance exams?
+5. Should theory questions be answered on screen, or stay on paper?
+6. Will HLTS sell this to other schools? That decides how strict licensing must be in v1.
+7. Where are the questions now (Word files, past papers, nowhere yet)?
+8. A sample of the school's broadsheet, so the score export matches it.
 
 ---
 
 ## 16. Immediate next steps
 
 1. Review this plan and answer §15.
-2. Approve the repository decision (§4.3) and create `hlts-limited/hlts-cbt`.
-3. Start Phase 0 by fixing the Firestore and Storage rules in this repo now, independent of the new system.
-4. Collect one subject's questions in the import template and a sample broadsheet for the Phase 1 pilot test.
+2. Create `hlts-limited/hlts-cbt` and buy a code-signing certificate for HLTS Limited (this can take 1–3 weeks).
+3. Collect hardware details for Engreg's lab, and borrow one typical lab PC for testing.
+4. Collect one subject's questions in the import template and a sample broadsheet for the pilot.
