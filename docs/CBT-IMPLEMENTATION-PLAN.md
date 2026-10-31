@@ -3,11 +3,11 @@
 
 | | |
 |---|---|
-| **Status** | Draft v0.3 for review (offline desktop software, CBT only) |
+| **Status** | Draft v0.4 for review (offline desktop software, CBT only, sold by HLTS to many schools) |
 | **Date** | 31 October 2026 |
 | **Product** | **HLTS CBT**: installable Windows software (`.exe` installers) that runs exams on a school's own computers with **no internet required** |
-| **First customer** | Engreg Schools |
-| **Later** | Optional online features (licence portal, cloud backup, result management) are separate follow-on work. See §13 |
+| **Business model** | HLTS licenses the software to many schools. Engreg Schools is the first customer and pilot site |
+| **Later** | Optional online features (online licence portal, cloud backup, result management) are separate follow-on work. See §13 |
 
 ---
 
@@ -18,7 +18,7 @@
 3. **Never lose an answer.** Every response is saved on the student's PC and on the server at once. A power cut or crashed PC doesn't lose work.
 4. **Secure exams.** Questions are encrypted on disk, the student screen is locked down, and every action is logged.
 5. **Usable scores straight away.** Automatic marking, Excel/PDF exports in the school's broadsheet layout, and printable answer scripts.
-6. **A sellable HLTS product.** Offline licence activation, versioned installers, and the ability to serve many schools without any cloud dependency.
+6. **A commercial HLTS product sold to many schools.** Strict offline licensing, per-school branding, editions, an HLTS licence and customer management tool, versioned releases, and a support process. See §7.
 
 ### Out of scope for v1
 - Result management (CA entry, report cards, positions). CBT scores are exported for now.
@@ -152,6 +152,7 @@ Staff accounts use passwords hashed with Argon2, with lockout after failed attem
 - **Automatic backup** after every exam and daily, to a second disk or USB. Backups are encrypted.
 - One-click restore, plus a "move to new server PC" wizard.
 - Archive old sessions to keep the database small.
+- Licence screen: edition, candidate limit, expiry, machine code, and enter activation or renewal codes.
 - Diagnostics: network test, client list with software versions, and a log bundle for HLTS support (exported to USB, with no student data unless chosen).
 
 ---
@@ -172,7 +173,9 @@ Staff accounts use passwords hashed with Argon2, with lockout after failed attem
 | `devices` | deviceId, name, seat, approved, lastSeen, clientVersion |
 | `incidents` | attemptId, type, note, by, ts |
 | `audit_log` | actor, action, target, before, after, ts |
-| `license` | licence file contents, activation info |
+| `license` | licence file contents, activation info, transfer history |
+| `school_profile` | name, logo, colours, address, motto, export templates |
+| `clock_watermark` | latest trusted time seen (clock rollback detection) |
 
 On each client, a small local SQLite holds unsent `answer_events` and the current attempt state only. It holds no answer keys.
 
@@ -180,14 +183,69 @@ On each client, a small local SQLite holds unsent `answer_events` and the curren
 
 ---
 
-## 7. Licensing and distribution (offline)
+## 7. Commercial product: licensing, editions and distribution
 
-- **Licence file** signed by HLTS (Ed25519). It contains school name, edition, maximum concurrent candidates, number of server installs, and expiry date.
-- **Offline activation:** the server shows a machine code (hardware fingerprint). HLTS returns a signed activation code by phone, WhatsApp or email, and the admin types or pastes it in. No internet is needed on the school's PC.
-- Clients need no licence. The server enforces the candidate limit.
-- After expiry, past data stays readable and exportable, but new exams can't be started.
-- **Updates:** signed installers delivered on USB or by download. Database migrations run on start, after an automatic backup. Clients warn when their version doesn't match the server's.
-- **Code signing:** buy an OV or EV code-signing certificate for HLTS Limited so Windows doesn't block the installers.
+HLTS will sell HLTS CBT to other schools, so licensing, branding and support are part of v1, not extras.
+
+### 7.1 Editions (proposal; prices set by HLTS)
+| Edition | For | Limits and features |
+|---|---|---|
+| **Trial** | Schools evaluating | 30 days, up to 20 concurrent candidates, "TRIAL" watermark on exports |
+| **Standard** | Primary and small secondary schools | Up to 100 concurrent candidates, 1 server install |
+| **Professional** | Larger secondary schools | Up to 300 concurrent candidates, 2 server installs (main + backup), item analysis, Word import |
+| **Centre / Enterprise** | Exam centres, school groups, multi-campus | Custom candidate limits, several servers, priority support |
+
+Licences are **annual subscriptions** (renewal keeps updates and support), with an option for a one-off perpetual licence plus paid yearly updates. HLTS decides which to offer. Add-ons can include question packs (e.g. WAEC/NECO/BECE practice banks) and on-site setup.
+
+### 7.2 Licence file and offline activation
+- **Licence file** signed by HLTS with Ed25519. It contains: licence ID, school name, edition, maximum concurrent candidates, number of server installs, features enabled, start and expiry dates.
+- **Offline activation:** the server shows a short machine code (hardware fingerprint plus licence ID). The school sends it to HLTS by phone, WhatsApp or email. HLTS returns an activation code, which the admin types or pastes in. No internet is needed on the school's PC.
+- **Transfers:** if a school replaces its server PC, HLTS issues a deactivation-and-reactivation code. The number of transfers per year is limited.
+- **Renewal:** a new code extends the expiry date. Warnings start 30 days before expiry.
+- **After expiry:** past data stays readable and exportable, but new exams can't be started. Exams already scheduled for the next 7 days can still run (grace period), so a school is never stopped in the middle of exam week.
+- Clients need no licence. The server enforces the concurrent candidate limit.
+
+### 7.3 Protecting the product against piracy
+- Licence checked at server start and at every exam release, against the signed file and the machine fingerprint.
+- **Clock rollback detection:** the server records the latest time it has seen (in the database and the audit log). If the PC clock goes backwards to dodge expiry, it refuses to start new exams until an admin enters a code from HLTS.
+- Core licence and marking code compiled to V8 bytecode (bytenode) and the app bundle integrity-checked at start. This won't stop a determined attacker, but it stops casual copying.
+- Each licence ID shows in the footer of every export, so copied installs can be traced.
+- An EULA shown at install and a signed customer agreement.
+
+### 7.4 HLTS Licence Manager (internal tool for HLTS staff)
+A small separate desktop app that only HLTS uses:
+- Customer register: school name, contacts, address, edition, licence history, invoices reference.
+- Generate trial, full, renewal and transfer activation codes from a school's machine code.
+- The signing private key is stored only on HLTS machines (ideally a hardware token or YubiKey) and backed up offline. **If this key leaks, anyone can make licences**, so access is limited to named staff.
+- Reports: licences expiring this month, schools by edition, and active installs.
+- Later, this can move online as a licence portal (§13).
+
+### 7.5 Per-school branding (white-label)
+- School name, logo, colours, address and motto on the student login screen, exam screen, PIN slips and every PDF/Excel export.
+- Set by the school admin in the server app. HLTS branding stays in the "Powered by HLTS CBT" footer and the About screen.
+- Customisable export templates so each school's scores match its own broadsheet.
+
+### 7.6 Releases and updates
+- Version numbers like `1.4.2`. A changelog ships with every release.
+- Signed installers delivered by download link and on USB by HLTS staff or resellers.
+- Database migrations run automatically after a backup. Rollback to the previous version is possible from that backup.
+- **No updates during an exam:** the server refuses to upgrade while an exam is scheduled within 24 hours.
+- Clients must match the server version. The server can push the matching client installer to each lab PC over the LAN.
+- One supported release line at a time. Security fixes go to the current version only.
+
+### 7.7 Onboarding and support for each new school
+- **Onboarding kit:** installers on a branded USB, quick-start guide, Excel templates for students and questions, PIN slip template, and a lab readiness checklist (PC specs, network, UPS).
+- **Setup options:** remote guidance by phone or video, or paid on-site installation.
+- **Support:** helpdesk by phone, WhatsApp and email, with an exam-week hotline. Schools send a **diagnostics bundle** (logs, versions, no student data unless chosen) on USB or by email.
+- **Training:** exam officer manual, teacher question-entry guide, proctor quick card, and short videos.
+- Optional **reseller or agent** programme for regions HLTS doesn't cover directly. Resellers get the onboarding kit but never the licence signing key.
+
+### 7.8 Legal and compliance
+- EULA and customer agreement (licence terms, support levels, liability).
+- **Nigeria Data Protection Act 2023:** each school is the data controller, and student data stays on its own machines. HLTS only sees data a school sends in a diagnostics bundle, covered by a data processing agreement.
+- Register "HLTS CBT" (or the final product name) as a trademark.
+- Code ownership stays with HLTS Limited (developer contracts must assign IP).
+- **Code-signing certificate** in the name of HLTS Limited so Windows trusts the installers.
 
 ---
 
@@ -228,6 +286,7 @@ Assumes 2–3 developers, 1 QA/support person, and a named school contact (exam 
 - Electron server and client shells, encrypted SQLite schema with migrations.
 - `@hlts/core` item scoring for every type and seeded shuffling, with full unit tests.
 - Installer pipeline (electron-builder, NSIS) and code signing set up.
+- Licence file format and signature check in `@hlts/core`, so every later feature can check its edition limits.
 - **Exit:** signed server and client installers that install, start, and find each other on a LAN.
 
 ### Phase 1: Server app (weeks 3–6)
@@ -243,21 +302,26 @@ Assumes 2–3 developers, 1 QA/support person, and a named school contact (exam 
 - Automatic marking, theory marking queue, and score export (Excel/PDF) with answer scripts.
 - **Exit:** a 30-candidate test in a real lab, with scores exported into the school's broadsheet.
 
-### Phase 3: Hardening and product features (weeks 11–13)
-- Offline licensing and activation, backup and restore, server migration wizard, diagnostics bundle.
+### Phase 3: Hardening and product features (weeks 11–14)
+- Offline licensing in the server app: activation, renewal, transfer, trial, edition limits, grace period, clock rollback detection.
+- **HLTS Licence Manager** app for HLTS staff, with the signing key on a hardware token.
+- Per-school branding and export template editor.
+- Code protection (bytecode, integrity check), EULA at install, client auto-push from server.
+- Backup and restore, server migration wizard, diagnostics bundle.
 - TLS pinning, exam content encryption and release, audit log screens.
 - Browser fallback mode, single-PC mode, optional Windows kiosk-account setup guide.
 - Failure drills: pull network cables, cut power to server and clients mid-exam, fill the disk, kill the client process, change PC clocks.
 - Load test with 300 simulated clients.
 - **Exit:** every failure drill passes with zero lost acknowledged answers.
 
-### Phase 4: Pilot and release (weeks 14–16)
-- Pilot: a real mid-term test or mock exam at Engreg, run by school staff with HLTS on standby.
+### Phase 4: Pilots and commercial launch (weeks 15–18)
+- Pilot 1: a real mid-term test or mock exam at Engreg, run by school staff with HLTS on standby.
+- **Pilot 2: a second school**, installed only with the onboarding kit and remote support, to prove HLTS can onboard schools without developers on site.
 - Fix pilot issues, then release v1.0 installers.
-- Training: exam officer manual, proctor quick card, teacher question-entry guide, and short videos.
-- **Exit:** school sign-off and go or no-go for the next terminal exams.
+- Finish the onboarding kit, training videos, EULA and customer agreement, support process and price list.
+- **Exit:** both schools sign off, and HLTS is ready to sell.
 
-**Total: about 16 weeks.**
+**Total: about 18 weeks** (2 weeks more than the single-school plan, for licensing, branding, the Licence Manager and a second pilot).
 
 ---
 
@@ -271,7 +335,8 @@ Assumes 2–3 developers, 1 QA/support person, and a named school contact (exam 
 | Installer | Clean Windows 10 and 11 virtual machines (including 4 GB RAM clients): install, upgrade from the previous version, uninstall |
 | Load | 300 simulated clients against the server on lab-grade hardware |
 | Failure drills | Scripted power-cut, network-loss and disk-full scenarios before every release |
-| Acceptance | Pilot exam with a sample of scripts marked by hand to compare |
+| Licensing | Expired, tampered, wrong-machine and clock-rolled-back licences are all refused. Grace period works. Transfer codes can only be used once |
+| Acceptance | Pilot exams at two schools with a sample of scripts marked by hand to compare |
 
 ---
 
@@ -305,7 +370,10 @@ Not in v1. The design leaves room for them:
 | Students escaping the exam screen | Electron kiosk mode, focus-loss logging, optional Windows kiosk account, invigilator seat map |
 | Antivirus or SmartScreen blocking installers | Code-signed installers, documented firewall and antivirus exceptions |
 | Old or mixed lab PCs | Test on 4 GB Windows 10 machines, 32-bit client build if needed, browser fallback |
-| Software piracy | Signed, machine-bound licence files with candidate limits |
+| Software piracy | Signed, machine-bound licences, clock rollback detection, licence ID on every export, bytecode protection |
+| Licence signing key leaks | Key on a hardware token, limited to named HLTS staff, offline backup, and a key-rotation plan in the next release |
+| Support load grows with each school | Onboarding kit, diagnostics bundle, training videos, resellers for regions |
+| A school is blocked during exam week | 7-day grace period after expiry, no updates within 24 hours of an exam |
 | Server PC failure | Automatic encrypted backups to USB, restore and migrate wizard |
 | Teachers slow to enter questions | Excel and Word import, templates, a data-entry sprint before the pilot |
 | Electron memory use on old PCs | Measure in Phase 0. Move the client to Tauri if 4 GB PCs struggle |
@@ -319,7 +387,7 @@ Not in v1. The design leaves room for them:
 3. **Electron or Tauri?** Electron is faster to build; Tauri is lighter on old PCs but needs Rust skills. Who will maintain the code?
 4. Which exams go on CBT first: class tests, mid-terms, terminal exams or entrance exams?
 5. Should theory questions be answered on screen, or stay on paper?
-6. Will HLTS sell this to other schools? That decides how strict licensing must be in v1.
+6. ~~Will HLTS sell this to other schools?~~ **Yes, confirmed.** Still to decide: annual subscription, perpetual licence, or both; edition limits and prices (§7.1); final product name.
 7. Where are the questions now (Word files, past papers, nowhere yet)?
 8. A sample of the school's broadsheet, so the score export matches it.
 
@@ -329,5 +397,7 @@ Not in v1. The design leaves room for them:
 
 1. Review this plan and answer §15.
 2. Create `hlts-limited/hlts-cbt` and buy a code-signing certificate for HLTS Limited (this can take 1–3 weeks).
-3. Collect hardware details for Engreg's lab, and borrow one typical lab PC for testing.
-4. Collect one subject's questions in the import template and a sample broadsheet for the pilot.
+3. Pick the product name and start trademark registration. Draft the EULA and customer agreement with a lawyer.
+4. Choose a second pilot school.
+5. Collect hardware details for Engreg's lab, and borrow one typical lab PC for testing.
+6. Collect one subject's questions in the import template and a sample broadsheet for the pilot.
