@@ -116,9 +116,10 @@ Browser (Firebase Hosting, static HTML/JS + supabase-js v2 via CDN)
 Supabase Postgres
  ├─ tables: configuration, people, enrolments, raw scores, review inputs
  ├─ snapshot tables: term_reports, term_report_subjects, annual_reports (no client writes)
- ├─ SECURITY DEFINER RPCs: submit_sheet, approve_sheet, return_sheet, unlock_sheet,
- │    compute_class_results, publish_results, compute_annual_results, promote_students,
- │    verify_report(code), redeem_result_pin (optional)
+ ├─ SECURITY DEFINER RPCs (workflow in §5): open_term_sheets, submit_sheet, return_sheet,
+ │    approve_sheet, unlock_sheet, submit_class_review, compute_class_results,
+ │    approve_arm, return_arm, publish_results, close_term, compute_annual_results,
+ │    promote_students, verify_report(code), redeem_result_pin (optional)
  ├─ triggers: score validation, updated_at/updated_by, audit log
  └─ custom access token hook → puts role into the JWT
 Supabase Edge Functions (Deno)
@@ -136,11 +137,162 @@ Published results are **snapshots**. Changing a grading scale later does not sil
 
 ---
 
-## 5. Database schema (PostgreSQL)
+## 5. Results workflow
+
+This section describes how one term's results move from setup to the parents. The system enforces each step: a status only changes through the RPC listed, and that RPC checks the caller's role and the step's conditions before anything moves.
+
+### 5.1 End-to-end flow (one term)
+
+```mermaid
+flowchart TD
+  subgraph ADMIN[Admin]
+    A1[Open term<br/>confirm enrolments, electives,<br/>subject and form-teacher assignments] --> A2[open_term_sheets<br/>auto-creates a draft sheet for<br/>every class subject + student]
+  end
+  subgraph TEACHER[Subject teacher]
+    T1[Enter CA1, CA2, Test, Exam<br/>autosave as draft] --> T2{All students scored<br/>or flagged ABS/EX?}
+    T2 -- no --> T1
+    T2 -- yes --> T3[submit_sheet]
+  end
+  subgraph HOD[HoD / Admin]
+    H1{Scores look right?}
+    H1 -- no --> H2[return_sheet with note]
+    H1 -- yes --> H3[approve_sheet]
+  end
+  subgraph FORM[Form teacher]
+    F1[Attendance, affective and psychomotor<br/>ratings, form teacher comment] --> F2[submit_class_review]
+  end
+  subgraph SYS[System]
+    S1[compute_class_results<br/>totals, grades, positions,<br/>class averages, high/low]
+  end
+  subgraph PRIN[Principal / Head Teacher]
+    P1[Review broadsheet<br/>add principal comments] --> P2{Approve arm?}
+  end
+  subgraph PUB[Admin]
+    U1[publish_results<br/>sheets locked, reports visible]
+  end
+  subgraph FAM[Parent / Student]
+    R1[View report card<br/>print / save PDF<br/>QR verification]
+  end
+
+  A2 --> T1
+  A2 --> F1
+  T3 --> H1
+  H2 --> T1
+  H3 --> G{All sheets approved<br/>and class review submitted?}
+  F2 --> G
+  G -- yes --> S1 --> P1
+  P2 -- "no: return_arm with note<br/>(unlock the sheet in question)" --> T1
+  P2 -- yes --> U1 --> R1
+```
+
+The two parallel tracks join at the gate **G**:
+- Subject teachers enter scores and HoDs approve them.
+- Form teachers fill in attendance, ratings and comments.
+
+Form teachers can start their track as soon as the term opens. They don't have to wait for the scores.
+
+### 5.2 Stages, owners and gates
+
+| # | Stage | Who | What they do | Function / RPC | Gate before the next stage |
+|---|---|---|---|---|---|
+| 1 | **Term setup** | Admin | Open the term. Confirm enrolments, SS electives, subject teachers and form teachers, and set days opened and the next term's start date. | `open_term_sheets(term)` | Every arm has a form teacher, and every class subject has a teacher. Sheets are created for every enrolled student who takes the subject. |
+| 2 | **Score entry** | Subject teacher | Enter scores as each CA or exam is done, and mark ABS or EX where needed. The sheet stays in `draft` all term. | Direct upsert (RLS allows only their own `draft` sheets) | No blank cells unless the score is flagged, and every score is ≤ its component maximum. |
+| 3 | **Sheet submission** | Subject teacher | Submit the finished sheet. | `submit_sheet(sheet)` | Sheet becomes `submitted` and read-only for the teacher. |
+| 4 | **Sheet review** | HoD (secondary) / Head Teacher or Admin (primary) | Check score spread, missing students and obvious errors, then approve or return with a note. | `approve_sheet`, `return_sheet(sheet, note)` | Sheet becomes `approved`, or goes back to `draft` with the note visible to the teacher. |
+| 5 | **Class review** | Form teacher | Enter days present, ratings and the form teacher comment (from the comment bank or free text). | Direct upsert on `class_reviews`, then `submit_class_review(term, arm)` | Days present ≤ days opened, and every student has a comment. |
+| 6 | **Compute** | Admin (or automatic) | Calculate the arm's results and preview the broadsheet. Re-run freely until publishing. | `compute_class_results(term, arm)` | All sheets `approved` and the class review submitted. The arm becomes `computed`. |
+| 7 | **Principal approval** | Principal (secondary) / Head Teacher (nursery & primary) | Read the broadsheet. Add principal comments one by one or in bulk from the comment bank. Approve the arm, or send it back. | `approve_arm(term, arm)`, `return_arm(term, arm, note, sheet_ids[])` | The arm becomes `approved`. Sending it back unlocks only the named sheets. |
+| 8 | **Publish** | Admin | Publish one or more arms, or a whole section at once. | `publish_results(term, arms[])` | The arm becomes `published`, its sheets become `locked`, and the reports become visible to families. |
+| 9 | **Access** | Parent / Student | View, print or save as PDF. Optionally redeem a PIN. A QR code on the printed card verifies authenticity. | `redeem_result_pin`, `verify_report(code)` | n/a |
+| 10 | **Close term** | Admin | Close the term so no more changes can be made, except through the correction path. | `close_term(term)` | All arms `published`. |
+
+### 5.3 Statuses
+
+**Score sheet (`score_sheets.status`)**
+
+```mermaid
+stateDiagram-v2
+  [*] --> draft: open_term_sheets
+  draft --> submitted: submit_sheet (teacher)
+  submitted --> draft: return_sheet + note (HoD/Admin)
+  submitted --> approved: approve_sheet (HoD/Admin)
+  approved --> draft: unlock_sheet + reason (Admin) / return_arm (Principal)
+  approved --> locked: publish_results (Admin)
+  locked --> draft: unlock_sheet + reason (Admin, unpublishes the arm)
+```
+
+**Arm result (new table `arm_results(term_id, arm_id, status, returned_note, approved_by, published_at)`)**
+
+| From | To | Triggered by | Condition |
+|---|---|---|---|
+| `collecting` | `ready` | System (automatic, via trigger) | All sheets `approved` **and** class review submitted |
+| `ready` | `computed` | `compute_class_results` | n/a |
+| `computed` | `computed` | `compute_class_results` (re-run) | Still unpublished |
+| `computed` | `approved` | `approve_arm` (Principal / Head Teacher) | Every student has a principal comment |
+| `computed` / `approved` | `collecting` | `return_arm` | A note is required. The named sheets go back to `draft`. |
+| `approved` | `published` | `publish_results` (Admin) | n/a |
+| `published` | `collecting` | `unlock_sheet` (Admin) | A reason is required. The arm's reports are unpublished. |
+
+Any change to a score after the arm reaches `computed` sends the arm back to `collecting`. This makes sure no one approves a stale broadsheet.
+
+### 5.4 Corrections after publishing
+
+1. A parent or teacher reports an error to the admin office.
+2. The admin runs `unlock_sheet(sheet, reason)`. This sends the sheet back to `draft` and the arm back to `collecting`, and unpublishes that arm's reports. Families see "Result under review".
+3. The subject teacher fixes the score and resubmits. The HoD approves.
+4. The admin recomputes. The principal re-approves, and the admin republishes.
+5. The audit log keeps the before and after values, who made each change, when, and the reason. The report card shows a "Revised on <date>" line.
+
+Only the affected arm is reopened. Other arms stay published.
+
+### 5.5 End of session (after Term 3 is published)
+
+```mermaid
+flowchart LR
+  A[Term 3 published<br/>for all arms] --> B[compute_annual_results<br/>cumulative average, position,<br/>promotion status]
+  B --> C[Principal reviews<br/>promotion list,<br/>overrides with reason]
+  C --> D[publish annual results]
+  D --> E[promote_students<br/>creates next session's enrolments:<br/>promoted to the next level, repeaters kept,<br/>SS3 to graduated, Primary 6 / JSS3 to next section]
+  E --> F[Admin assigns arms<br/>and electives for new session]
+```
+
+### 5.6 Roles at a glance (RACI)
+
+R = Responsible, A = Accountable, C = Consulted, I = Informed
+
+| Activity | Admin | Subject teacher | HoD | Form teacher | Principal / Head | Parent / Student |
+|---|---|---|---|---|---|---|
+| Term setup and assignments | **R/A** | I | C | I | C | |
+| Score entry and submission | I | **R** | A | | | |
+| Sheet approval | C | I | **R/A** | | I | |
+| Attendance, ratings, comments | | | | **R** | A | |
+| Compute and broadsheet | **R** | | I | I | I | |
+| Principal comments and arm approval | | | C | | **R/A** | |
+| Publish | **R** | I | I | I | A | I |
+| Post-publication correction | **R/A** | R | R | | I | I |
+| Annual results and promotion | R | | C | C | **A** | I |
+
+### 5.7 Example timeline for a 13-week term
+
+| When | Milestone |
+|---|---|
+| Week 1 | Admin completes term setup, and score sheets open. |
+| Weeks 2–10 | Teachers enter CA scores as tests are done. The progress tracker shows completion as a percentage per arm. |
+| Week 6 | *(Optional)* A mid-term report is published from CA scores alone, using the same flow with exam components hidden. |
+| Weeks 11–12 | Exams. Exam scores are due **3 school days** after each paper. |
+| Exams + 3 days | All sheets submitted. HoDs have **2 days** to approve or return. |
+| Exams + 4 days | Form teachers submit class reviews. |
+| Exams + 5 days | Admin computes. The principal has **2 days** to comment and approve. |
+| Closing day | Admin publishes. Parents can view the results from that day. |
+
+The tracker highlights overdue sheets. An optional Edge Function sends a daily reminder email to teachers with sheets still in `draft` after a deadline. The school sets the deadlines in `terms`, using the new columns `scores_due`, `review_due` and `publish_on`.
+---
+
+## 6. Database schema (PostgreSQL)
 
 All changes are SQL migrations in `supabase/migrations/`, managed with the Supabase CLI and kept in this repo.
 
-### 5.1 People and access
+### 6.1 People and access
 ```sql
 create type app_role as enum ('admin','principal','hod','teacher','parent','student');
 
@@ -175,13 +327,14 @@ create table student_guardians (
 );
 ```
 
-### 5.2 Academic configuration
+### 6.2 Academic configuration
 ```sql
 create table academic_sessions (id serial primary key, name text unique not null,   -- '2026/2027'
   is_current boolean default false);
 create table terms (id serial primary key, session_id int references academic_sessions,
   term_no smallint check (term_no between 1 and 3), starts_on date, ends_on date,
   days_opened int, next_term_begins date, status text default 'open',
+  scores_due date, review_due date, publish_on date,          -- workflow deadlines (§5.7)
   unique (session_id, term_no));
 
 create table grading_scales (id serial primary key, name text not null);
@@ -222,7 +375,7 @@ create table enrolment_subjects (                               -- SS electives
   class_subject_id int references class_subjects, primary key (enrolment_id, class_subject_id));
 ```
 
-### 5.3 Raw inputs
+### 6.3 Raw inputs
 ```sql
 create type sheet_status as enum ('draft','submitted','approved','locked');
 
@@ -245,6 +398,15 @@ create table component_scores (
   updated_by uuid default auth.uid(), updated_at timestamptz default now(),
   primary key (entry_id, component_id));
 
+create type arm_status as enum ('collecting','ready','computed','approved','published');
+
+create table arm_results (                     -- per arm workflow state (§5.3)
+  term_id int references terms, arm_id int references class_arms,
+  status arm_status not null default 'collecting',
+  review_submitted_at timestamptz, returned_note text,
+  approved_by uuid references profiles, published_at timestamptz,
+  primary key (term_id, arm_id));
+
 create table class_reviews (                   -- per term, per student
   term_id int references terms, student_id uuid references students,
   days_present int, affective jsonb default '{}', psychomotor jsonb default '{}',
@@ -256,7 +418,7 @@ create table comment_bank (id serial primary key, section_code text references s
   text text not null);
 ```
 
-### 5.4 Computed snapshots (written only by functions)
+### 6.4 Computed snapshots (written only by functions)
 ```sql
 create table term_reports (id bigserial primary key,
   term_id int references terms, student_id uuid references students, arm_id int,
@@ -284,10 +446,10 @@ create table audit_log (id bigserial primary key, at timestamptz default now(),
   before jsonb, after jsonb, reason text);
 ```
 
-### 5.5 Indexes
+### 6.5 Indexes
 Each FK column used in filters (`enrolments(arm_id)`, `subject_entries(student_id)`, `term_reports(student_id)`, `class_subjects(teacher_id)`) gets an index. Run the Supabase **advisors** after each migration to catch missing indexes and RLS gaps.
 
-### 5.6 Core computation (sketch)
+### 6.6 Core computation (sketch)
 `compute_class_results(p_term int, p_arm int)` runs in one transaction:
 1. Check that every score sheet for the arm and term is `approved`.
 2. Build a CTE of per-subject totals (sum of `component_scores` joined to `subject_entries`). Apply the ABS and EX flags.
@@ -300,7 +462,7 @@ Each FK column used in filters (`enrolments(arm_id)`, `subject_entries(student_i
 
 ---
 
-## 6. Security: Supabase Auth and RLS
+## 7. Security: Supabase Auth and RLS
 
 - **Roles in the JWT:** a **Custom Access Token Hook** (a Postgres function) copies `profiles.role` into the token's claims. A helper reads it:
   ```sql
@@ -348,9 +510,9 @@ Each FK column used in filters (`enrolments(arm_id)`, `subject_entries(student_i
 
 ---
 
-## 7. User interfaces
+## 8. User interfaces
 
-### 7.1 Results admin (`results-admin.html`, linked from the existing admin sidebar)
+### 8.1 Results admin (`results-admin.html`, linked from the existing admin sidebar)
 - **Academic setup:**
   - sessions and terms
   - sections, assessment schemes, grading scales and positions toggle
@@ -372,7 +534,7 @@ Each FK column used in filters (`enrolments(arm_id)`, `subject_entries(student_i
   - compute, publish and unpublish
 - **Analytics:** subject pass rates, arm averages across terms and top performers (Chart.js, as the existing dashboard uses).
 
-### 7.2 Teacher portal (`teacher.html`)
+### 8.2 Teacher portal (`teacher.html`)
 - **My sheets:** a list with each sheet's status.
 - **Score grid:**
   - spreadsheet-style keyboard navigation (Enter, Tab and arrow keys)
@@ -386,20 +548,20 @@ Each FK column used in filters (`enrolments(arm_id)`, `subject_entries(student_i
   - attendance, ratings and comments, with suggestions from the comment bank based on each student's average
   - submit when done
 
-### 7.3 Parent / student portal (`results.html`)
+### 8.3 Parent / student portal (`results.html`)
 - Log in, then use a child switcher (for parents) and a session and term selector.
 - Show the report card, with **Print / Save as PDF** using A4 print CSS.
 - Show the annual summary in Term 3.
 - **Optional scratch-card PIN mode:** the user enters an admission number and a PIN. The RPC `redeem_result_pin` checks it, counts uses and is rate-limited. PINs are stored hashed.
 
-### 7.4 Report cards and exports
+### 8.4 Report cards and exports
 - **v1:** a print stylesheet on `results.html`, with one layout each for Nursery, Primary and Secondary. Print from the browser to PDF. This costs nothing.
 - **v2 (optional):** a `report-pdf` Edge Function for bulk class PDFs as a ZIP for the school office.
 - **Broadsheet XLSX:** generated in the browser with SheetJS, from a `broadsheet(term, arm)` RPC or view.
 
 ---
 
-## 8. Delivery phases
+## 9. Delivery phases
 
 Estimates assume one full-stack developer.
 
@@ -418,7 +580,7 @@ Estimates assume one full-stack developer.
 
 ---
 
-## 9. Testing
+## 10. Testing
 
 - **pgTAP (`supabase test db`):**
   - **grading:** grade boundaries (39/40, 49/50, 74/75) and the ABS/EX flags
@@ -435,7 +597,7 @@ Estimates assume one full-stack developer.
 
 ---
 
-## 10. Decisions needed from the school
+## 11. Decisions needed from the school
 
 1. Exact **assessment weights** for each section.
 2. **Grading scales** and remarks for Primary/JSS and for SSS.
